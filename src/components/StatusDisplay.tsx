@@ -1,6 +1,23 @@
-// StatusDisplay.tsx
 'use client'
 import React from 'react'
+import styled from 'styled-components'
+
+const StatusWrapper = styled.div`
+  text-align: center;
+  margin-top: 20px;
+  color: #fff;
+`
+const StatusRow = styled.div`
+  margin: 5px 0;
+`
+
+const StatusLabel = styled.span`
+  font-weight: bold;
+`
+
+const StatusValue = styled.span`
+  margin-left: 10px;
+`
 
 interface StatusDisplayProps {
   iceGatheringStatus: string
@@ -18,28 +35,28 @@ export const StatusDisplay: React.FC<StatusDisplayProps> = ({
   streamingStatus,
 }) => {
   return (
-    <div className="text-center mt-5 text-white">
-      <div className="my-1.5">
-        <span className="font-bold">ICE gathering status:</span>
-        <span className="ml-2.5">{iceGatheringStatus}</span>
-      </div>
-      <div className="my-1.5">
-        <span className="font-bold">ICE connection status:</span>
-        <span className="ml-2.5">{iceConnectionStatus}</span>
-      </div>
-      <div className="my-1.5">
-        <span className="font-bold">Peer connection status:</span>
-        <span className="ml-2.5">{peerConnectionStatus}</span>
-      </div>
-      <div className="my-1.5">
-        <span className="font-bold">Signaling status:</span>
-        <span className="ml-2.5">{signalingStatus}</span>
-      </div>
-      <div className="my-1.5">
-        <span className="font-bold">Streaming status:</span>
-        <span className="ml-2.5">{streamingStatus}</span>
-      </div>
-    </div>
+    <StatusWrapper>
+      <StatusRow>
+        <StatusLabel>ICE gathering status:</StatusLabel>
+        <StatusValue>{iceGatheringStatus}</StatusValue>
+      </StatusRow>
+      <StatusRow>
+        <StatusLabel>ICE connection status:</StatusLabel>
+        <StatusValue>{iceConnectionStatus}</StatusValue>
+      </StatusRow>
+      <StatusRow>
+        <StatusLabel>Peer connection status:</StatusLabel>
+        <StatusValue>{peerConnectionStatus}</StatusValue>
+      </StatusRow>
+      <StatusRow>
+        <StatusLabel>Signaling status:</StatusLabel>
+        <StatusValue>{signalingStatus}</StatusValue>
+      </StatusRow>
+      <StatusRow>
+        <StatusLabel>Streaming status:</StatusLabel>
+        <StatusValue>{streamingStatus}</StatusValue>
+      </StatusRow>
+    </StatusWrapper>
   )
 }
 

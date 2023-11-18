@@ -8,8 +8,8 @@ import GameAssistantWindow from '../components/gameAssistantWindow'
 export default function Home() {
   return (
     <HangmanProvider>
-      <AvatarStream />
-      {/*<GameAssistantWindow />*/}
+      {/*<AvatarStream />*/}
+      <GameAssistantWindow />
     </HangmanProvider>
   )
 }

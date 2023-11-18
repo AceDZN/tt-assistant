@@ -1,12 +1,12 @@
 // componeents/gameAssistantWindow.tsx
 'use client'
-//import { v4 as uuidv4 } from 'uuid'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useHangmanContext } from './context/HangmanContext'
 import HangmanGame from './HangmanGame'
 import { useGlobalAudioPlayer } from 'react-use-audio-player'
+import { GameEndCallback } from '@/types/HangmanTypes'
 const SPEECH_PATH = 'audio-files/'
-
+const moderatorPrefix = `this is your moderator, only you can see this message.`
 export default function GameAssistantWindow() {
   const {
     guesses,
@@ -41,49 +41,54 @@ export default function GameAssistantWindow() {
     switch (func.event) {
       case 'start_hangman_game':
         setGameStartAlert('Time to start the Hangman Game!')
-        const args = JSON.parse(func.arguments)
+        const args = func.arguments.word ? func.arguments : JSON.parse(func.arguments)
+        console.log('start hangman game', { args })
+
         resetGame({ ...args })
         break
     }
   }
   const handleAudioEvent = (filename: string) => {
     if (!shouldPlayTTS) return
-    load(`${SPEECH_PATH}/${filename}`, {
-      autoplay: true,
+    requestAnimationFrame(() => {
+      load(`${SPEECH_PATH}/${filename}`, {
+        autoplay: true,
+      })
     })
   }
 
   const handlePromptToAssistant = useCallback(
-    async (additionalData = {}) => {
-      if (!prompt || prompt === '') return
+    async (additionalData = {} as any) => {
+      if (!additionalData.prompt && (!prompt || prompt === '')) return
+      let res
       try {
-        const res = await fetch('/api/openai', {
+        res = await fetch('/api/hangman', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ prompt, userName, isPremium, threadId, tts: shouldGenerateTTS, ...additionalData }),
         })
-        const data = await res.json()
-
-        if (data.actions) {
-          for (let i = 0; i < data.actions.length; i++) {
-            if (data.actions[i].action === 'send_to_frontend') {
-              handleFrontEvent(data.actions[i])
-            }
-          }
-        }
-        if (data.speechFile) {
-          handleAudioEvent(data.speechFile)
-        }
-        if (data.threadId && !threadId) {
-          setThreadId(data.threadId)
-        }
-        setResponse(data.response)
       } catch (e) {
         console.log(e)
         throw new Error("Couldn't send prompt to assistant")
       }
+      if (!res) throw new Error('No response from assistant')
+      const data = await res.json()
+      if (data.actions) {
+        for (let i = 0; i < data.actions.length; i++) {
+          if (data.actions[i].action === 'send_to_frontend') {
+            handleFrontEvent(data.actions[i])
+          }
+        }
+      }
+      if (data.speechFile) {
+        handleAudioEvent(data.speechFile)
+      }
+      if (data.threadId && !threadId) {
+        setThreadId(data.threadId)
+      }
+      setResponse(data.response)
     },
     [shouldGenerateTTS, prompt, userName, isPremium, threadId],
   )
@@ -96,7 +101,7 @@ export default function GameAssistantWindow() {
   useEffect(() => {
     if (assistantSent.current === true) return
     assistantSent.current = true
-    fetch('/api/openai', {
+    fetch('/api/hangman', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -116,6 +121,40 @@ export default function GameAssistantWindow() {
         setResponse(data.response)
       })
   }, [])
+
+  const handleHangmanUserGuess = useCallback(
+    (data: { guess: string; correct: boolean; response: any }) => {
+      console.log('onGuess', { data })
+      if (!threadId) return
+      const { response } = data
+      const guessPrompt = `this is your moderator, only you can see this message.
+    the user have just guesses "${data.guess}", and it was ${
+        data.correct ? 'correct' : 'wrong'
+      }, just a reminder, the word is "${wordToDiscover}"`
+      if (response.speechFile) {
+        handleAudioEvent(response.speechFile)
+      }
+      //handlePromptToAssistant({ prompt: guessPrompt })
+    },
+    [shouldGenerateTTS, threadId, wordToDiscover],
+  )
+
+  const handleHangmanGameEnd = useCallback(
+    (result: any) => {
+      console.log('GameEndCallback', { result })
+
+      const { action, score, guessesCount, correct, wrong } = result as any
+      const isWin = action === 'win'
+      const gameStatusPrompt = isWin
+        ? `won the game and guessed correctly the word ${wordToDiscover}`
+        : `lost the game, the word was ${wordToDiscover}}`
+      const endGamePrompt = `${moderatorPrefix}
+      the user have just finished the hangman game, ${gameStatusPrompt}, ${guessesCount} guesses were made (${correct} corerct, ${wrong} wrong), the finish score of the game is: ${score}, you should respond to the user.`
+      if (!threadId) return
+      handlePromptToAssistant({ prompt: endGamePrompt })
+    },
+    [shouldGenerateTTS, threadId, wordToDiscover],
+  )
 
   const handleGenerateTTSToggle = useCallback(
     (e: any) => {
@@ -165,7 +204,6 @@ export default function GameAssistantWindow() {
                 type="checkbox"
                 disabled={!shouldGenerateTTS}
                 checked={shouldPlayTTS && shouldGenerateTTS}
-                disabled={!shouldGenerateTTS}
                 onChange={handlePlayTTSToggle}
               />
               Play TTS
@@ -190,14 +228,11 @@ export default function GameAssistantWindow() {
       <div className="w-2/3 p-4">
         <div className="interactive-content">
           <HangmanGame
-            onGuess={(data) => {
-              console.log('onGuess', { data })
-            }}
-            onGameEnd={(data) => {
-              console.log('onGameEnd', { data })
-            }}
-            onGameStart={(data) => {
-              console.log('onGameStart', { data })
+            tts={shouldGenerateTTS}
+            onGuess={handleHangmanUserGuess}
+            onGameEnd={handleHangmanGameEnd}
+            onGameStart={(result) => {
+              console.log('onGameStart', { result })
             }}
           />
         </div>

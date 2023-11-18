@@ -57,6 +57,7 @@ export const HangmanProvider: React.FC<{ children: React.ReactNode }> = ({ child
       wordToDiscover: word,
       allowedLetters: letters.map((letter) => letter.toUpperCase()),
       errors: 0,
+
       gameOverState: false, // Reset the gameOverState on game restart
       description: description, // Reset the description to default
     })

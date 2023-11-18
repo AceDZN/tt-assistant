@@ -7,12 +7,12 @@ export interface GameStartCallback {
 
 // Callback type for when the game ends
 export interface GameEndCallback {
-  (result: { score: number; guessesCount: number; correct: number; wrong: number }): void
+  (result: { action: 'game-over' | 'win'; score: number; guessesCount: number; correct: number; wrong: number }): void
 }
 
 // Callback type for each guess
 export interface GuessCallback {
-  (guessInfo: { guess: string; correct: boolean }): void
+  (guessInfo: { guess: string; correct: boolean; response: any }): void
 }
 
 // Hangman game state

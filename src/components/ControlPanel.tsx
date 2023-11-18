@@ -1,6 +1,36 @@
 // ControlPanel.tsx
 'use client'
 import React, { useState } from 'react'
+import styled from 'styled-components'
+
+const PanelWrapper = styled.div`
+  text-align: center;
+  margin-top: 20px;
+`
+
+const InputField = styled.input`
+  color: #000;
+  width: 80%;
+  padding: 8px;
+  margin: 0 auto;
+  display: block;
+`
+
+const Button = styled.button`
+  padding: 10px 20px;
+  border-radius: 5px;
+  border: none;
+  font-size: 16px;
+  margin: 10px 5px;
+  background-color: #7459fe;
+  color: #fff;
+
+  &:hover {
+    background-color: #9480ff;
+    cursor: pointer;
+    transition: all 0.2s ease-out;
+  }
+`
 
 interface ControlPanelProps {
   onConnect: () => void
@@ -21,33 +51,12 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({ onConnect, onStart, 
   }
 
   return (
-    <div className="text-center mt-5">
-      <input
-        type="text"
-        value={userInput}
-        onChange={handleInputChange}
-        placeholder="Enter your message..."
-        className="w-4/5 p-2 block mx-auto"
-      />
-      <button
-        onClick={onConnect}
-        className="py-2.5 px-5 rounded border-none text-lg m-2.5 bg-purple-600 text-white hover:bg-purple-400 transition duration-200 ease-out"
-      >
-        Connect
-      </button>
-      <button
-        onClick={handleStart}
-        className="py-2.5 px-5 rounded border-none text-lg m-2.5 bg-purple-600 text-white hover:bg-purple-400 transition duration-200 ease-out"
-      >
-        Start
-      </button>
-      <button
-        onClick={onDestroy}
-        className="py-2.5 px-5 rounded border-none text-lg m-2.5 bg-purple-600 text-white hover:bg-purple-400 transition duration-200 ease-out"
-      >
-        Destroy
-      </button>
-    </div>
+    <PanelWrapper>
+      <InputField type="text" value={userInput} onChange={handleInputChange} placeholder="Enter your message..." />
+      <Button onClick={onConnect}>Connect</Button>
+      <Button onClick={handleStart}>Start</Button>
+      <Button onClick={onDestroy}>Destroy</Button>
+    </PanelWrapper>
   )
 }
 

@@ -1,11 +1,24 @@
 // AvatarStream.tsx
 'use client'
 import React, { useEffect, useRef, useContext } from 'react'
+import styled from 'styled-components'
 import { ControlPanel } from './ControlPanel'
 import { StatusDisplay } from './StatusDisplay'
 import { useOpenAIChat } from '../hooks/useOpenAIChat'
 import { useDIDStreaming } from '../hooks/useDIDStreaming'
 import StreamingContext from './context/StreamingContext'
+
+const VideoWrapper = styled.div`
+  background: url('/bg.png');
+  height: 500px;
+  background-position: top;
+  text-align: center;
+`
+
+const VideoElement = styled.video`
+  border-radius: 50%;
+  background-color: #000;
+`
 
 const AvatarStream = () => {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -45,9 +58,9 @@ const AvatarStream = () => {
 
   return (
     <div>
-      <div className="bg-[url('/bg.png')] h-500 bg-top text-center">
-        <video ref={videoRef} width="400" height="400" autoPlay className="rounded-full bg-black" />
-      </div>
+      <VideoWrapper>
+        <VideoElement ref={videoRef} width="400" height="400" autoPlay />
+      </VideoWrapper>
       <ControlPanel onConnect={handleConnect} onStart={handleStart} onDestroy={handleDestroy} />
       <StatusDisplay
         iceGatheringStatus={iceGatheringStatus}

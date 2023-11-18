@@ -22,7 +22,17 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "pages/api/chat.jsx"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "pages/api/chat.jsx",
+    "next-env.d.ts",
+    "pages/**/*",
+    "src/**/*", //if it happend in inside src
+    "components/**/*"
+  ],
   "exclude": ["node_modules"]
 }
 
