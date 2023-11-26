@@ -9,7 +9,6 @@ const corsOption = {
   origin: ['http://localhost:5173'],
 }
 const assistantRouter = require('./assistant')
-const dalleRoutes = require('./dalleRoutes.js')
 
 const app = express()
 app.use(cors(corsOption))
