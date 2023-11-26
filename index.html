@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/svg+xml" href="/logo.svg" />
+<title>TinyTap Digital Tutor</title>
+<link
+      href="https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;700&display=swap"
+      rel="stylesheet"
+    />
+  <link rel="stylesheet" href="default.css">
+</head>
+<body>
+<div id="app">
+<div class="sidebar">
+  <div class="user-image-container">
+      <div class="video-container">
+        <video id="talk-video" width="100%" autoplay></video>
+        <video id="idle-video" width="100%" autoplay muted></video>
+      </div>
+
+    <div class="user-image"></div>
+  </div>
+  <div id="root"></div>
+  
+</div>
+
+<div class="main-content-container">
+  <div class="main-content-floater">
+    <div class="main-content"><code id="slide_content">SLIDE CONTENT WILL APPEAR HERE</code></div>
+  </div>
+</div>
+</div>
+<script type="module" src="/src/streaming.js"></script>
+<script type="module" src="/src/main.tsx"></script>
+</body>
+</html>
