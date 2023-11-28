@@ -1,0 +1,33 @@
+{
+    "properties": {
+        "activity_type": {
+            "const": "SummaryWithTitle",
+            "title": "Activity Type"
+        },
+        "description": {
+            "const": "descriptive slide featuring a title and an informative paragraph about the subject.",
+            "title": "Description"
+        },
+        "text": {
+            "description": "a comprehensive information block on the subject, comprising at least 40 words.",
+            "maxLength": 400,
+            "minLength": 200,
+            "title": "Text",
+            "type": "string"
+        },
+        "title": {
+            "description": "A relevant and engaging title for the slide, minimum 4 words.",
+            "maxLength": 100,
+            "title": "Title",
+            "type": "string"
+        }
+    },
+    "required": [
+        "activity_type",
+        "description",
+        "text",
+        "title"
+    ],
+    "title": "SummaryWithTitle",
+    "type": "object"
+}

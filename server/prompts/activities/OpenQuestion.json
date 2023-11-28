@@ -1,0 +1,45 @@
+{
+    "properties": {
+        "image_search": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "description": "2-4 unique specific English keywords for image search. without commas, in English! (example: Zebra cub savana africa)",
+            "title": "Image Search"
+        },
+        "activity_type": {
+            "const": "OpenQuestion",
+            "title": "Activity Type"
+        },
+        "question": {
+            "description": "the question to ask",
+            "maxLength": 40,
+            "title": "Question",
+            "type": "string"
+        },
+        "description": {
+            "const": "test knowledge of the player by asking an open ended question that the player should write a paragraph as answer",
+            "title": "Description"
+        },
+        "right_answer_feedback": {
+            "description": "provide feedback that would give more knowledge about the question",
+            "maxLength": 100,
+            "title": "Right Answer Feedback",
+            "type": "string"
+        }
+    },
+    "required": [
+        "image_search",
+        "activity_type",
+        "question",
+        "description",
+        "right_answer_feedback"
+    ],
+    "title": "OpenQuestion",
+    "type": "object"
+}

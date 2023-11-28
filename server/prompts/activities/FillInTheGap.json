@@ -1,0 +1,38 @@
+{
+    "properties": {
+        "activity_type": {
+            "const": "FillInTheGap",
+            "title": "Activity Type"
+        },
+        "description": {
+            "title": "Description",
+            "type": "string"
+        },
+        "prefix": {
+            "description": "Initial sentence segment up to the missing word. not more than 8 words! (for example: 'Soccer is a team game where')",
+            "maxLength": 40,
+            "title": "Prefix",
+            "type": "string"
+        },
+        "missing_word": {
+            "description": "Missing mid-sentence part, no leading spaces, not first/last word, under 1 characters and no more than 3 words.(for example: 'two teams')",
+            "maxLength": 10,
+            "title": "Missing Word",
+            "type": "string"
+        },
+        "postfix": {
+            "description": "Final sentence segment post-missing word, 10-40 characters, not less than 2 words. can't be only a full stop! (for example: correct: 'face each other on a field.' incorrect: '.')",
+            "maxLength": 40,
+            "title": "Postfix",
+            "type": "string"
+        }
+    },
+    "required": [
+        "activity_type",
+        "prefix",
+        "missing_word",
+        "postfix"
+    ],
+    "title": "FillInTheGap",
+    "type": "object"
+}

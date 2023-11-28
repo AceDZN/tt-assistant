@@ -1,0 +1,45 @@
+{
+    "properties": {
+        "image_search": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "description": "2-4 unique specific English keywords for image search. without commas, in English! (example: Zebra cub savana africa)",
+            "title": "Image Search"
+        },
+        "activity_type": {
+            "const": "Summary",
+            "title": "Activity Type"
+        },
+        "description": {
+            "const": "descriptive slide featuring an informative paragraph about the subject.",
+            "title": "Description"
+        },
+        "text": {
+            "description": "a comprehensive information block on the subject, ranging from 200 to 450 characters and comprising at least 40 words. Aim for clarity and thoroughness to effectively enlighten the player.",
+            "maxLength": 450,
+            "minLength": 200,
+            "title": "Text",
+            "type": "string"
+        },
+        "tall_image_search": {
+            "description": "unique keywords related to the slide's subject matter to formulate an image search term. Minimum 2 words. English only.",
+            "title": "Tall Image Search",
+            "type": "string"
+        }
+    },
+    "required": [
+        "image_search",
+        "activity_type",
+        "description",
+        "text",
+        "tall_image_search"
+    ],
+    "title": "Summary",
+    "type": "object"
+}

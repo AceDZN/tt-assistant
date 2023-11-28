@@ -1,0 +1,66 @@
+{
+    "$defs": {
+        "ImageAnswer": {
+            "properties": {
+                "answer": {
+                    "description": "an answer",
+                    "maxLength": 40,
+                    "title": "Answer",
+                    "type": "string"
+                },
+                "square_image_search": {
+                    "description": "at least three unique English keywords related to the answer. without commas, in English! (example: Zebra savana africa ).",
+                    "maxLength": 40,
+                    "minLength": 10,
+                    "title": "Square Image Search",
+                    "type": "string"
+                },
+                "correct": {
+                    "title": "Correct",
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "answer",
+                "square_image_search",
+                "correct"
+            ],
+            "title": "ImageAnswer",
+            "type": "object"
+        }
+    },
+    "properties": {
+        "activity_type": {
+            "const": "MultiSelectImages",
+            "title": "Activity Type"
+        },
+        "question": {
+            "description": "textual question to ask the player about the subject",
+            "maxLength": 30,
+            "title": "Question",
+            "type": "string"
+        },
+        "answers": {
+            "description": "6 different unique answers, only 2 are correct, the others are totally unrelated searches",
+            "items": {
+                "$ref": "#/$defs/ImageAnswer"
+            },
+            "maxItems": 6,
+            "minItems": 6,
+            "title": "Answers",
+            "type": "array"
+        },
+        "description": {
+            "const": "Ask a question and provide 6 answers, only 2 are correct; the others are totally unrelated , the answers are represented as images;",
+            "title": "Description"
+        }
+    },
+    "required": [
+        "activity_type",
+        "question",
+        "answers",
+        "description"
+    ],
+    "title": "MultiSelectImages",
+    "type": "object"
+}

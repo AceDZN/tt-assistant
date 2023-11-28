@@ -1,0 +1,103 @@
+{
+    "$defs": {
+        "ImageAnswer": {
+            "properties": {
+                "answer": {
+                    "description": "an answer",
+                    "maxLength": 40,
+                    "title": "Answer",
+                    "type": "string"
+                },
+                "square_image_search": {
+                    "description": "at least three unique English keywords related to the answer. without commas, in English! (example: Zebra savana africa ).",
+                    "maxLength": 40,
+                    "minLength": 10,
+                    "title": "Square Image Search",
+                    "type": "string"
+                },
+                "correct": {
+                    "title": "Correct",
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "answer",
+                "square_image_search",
+                "correct"
+            ],
+            "title": "ImageAnswer",
+            "type": "object"
+        }
+    },
+    "properties": {
+        "image_search": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "description": "2-4 unique specific English keywords for image search. without commas, in English! (example: Zebra cub savana africa)",
+            "title": "Image Search"
+        },
+        "activity_type": {
+            "const": "QuizWithImageAnswers",
+            "title": "Activity Type"
+        },
+        "question": {
+            "description": "ask a question about the subject, the player will answer by clicking on one of 3 image options. example: question-which image represents france? answer-image #2 shows eifel tower.",
+            "maxLength": 30,
+            "title": "Question",
+            "type": "string"
+        },
+        "right_answer_feedback": {
+            "description": "feedback to give when the player answers correctly.",
+            "maxLength": 100,
+            "title": "Right Answer Feedback",
+            "type": "string"
+        },
+        "hint": {
+            "description": "hint how to answer the question correctly.",
+            "maxLength": 100,
+            "title": "Hint",
+            "type": "string"
+        },
+        "image_type": {
+            "enum": [
+                "AnimatedGifHttps",
+                "Clipart",
+                "Photo"
+            ],
+            "title": "Image Type",
+            "type": "string"
+        },
+        "answers": {
+            "description": "different unique image search answers to the question, only one is the correct answer",
+            "items": {
+                "$ref": "#/$defs/ImageAnswer"
+            },
+            "maxItems": 3,
+            "minItems": 2,
+            "title": "Answers",
+            "type": "array"
+        },
+        "description": {
+            "const": "a text question on the subject; player click on one of three image options.",
+            "title": "Description"
+        }
+    },
+    "required": [
+        "image_search",
+        "activity_type",
+        "question",
+        "right_answer_feedback",
+        "hint",
+        "image_type",
+        "answers",
+        "description"
+    ],
+    "title": "QuizWithImageAnswers",
+    "type": "object"
+}

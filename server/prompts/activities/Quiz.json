@@ -1,0 +1,84 @@
+{
+    "$defs": {
+        "Answer": {
+            "properties": {
+                "text": {
+                    "description": "answer text",
+                    "maxLength": 40,
+                    "title": "Text",
+                    "type": "string"
+                },
+                "correct": {
+                    "title": "Correct",
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "text",
+                "correct"
+            ],
+            "title": "Answer",
+            "type": "object"
+        }
+    },
+    "properties": {
+        "image_search": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "description": "2-4 unique specific English keywords for image search. without commas, in English! (example: Zebra cub savana africa)",
+            "title": "Image Search"
+        },
+        "activity_type": {
+            "const": "Quiz",
+            "title": "Activity Type"
+        },
+        "question": {
+            "description": "question about the subject, which the user will need to answer by clicking on a text",
+            "maxLength": 30,
+            "title": "Question",
+            "type": "string"
+        },
+        "hint": {
+            "description": "hint how to answer the question",
+            "maxLength": 100,
+            "title": "Hint",
+            "type": "string"
+        },
+        "right_answer_feedback": {
+            "description": "Cheerful feedback to celebrate the player's correct selection.",
+            "maxLength": 100,
+            "title": "Right Answer Feedback",
+            "type": "string"
+        },
+        "answers": {
+            "default": [],
+            "items": {
+                "$ref": "#/$defs/Answer"
+            },
+            "maxItems": 3,
+            "minItems": 2,
+            "title": "Answers",
+            "type": "array"
+        },
+        "description": {
+            "const": "Ask a text question related to the subject; player chooses from 3 textual options, only one correct answer.",
+            "title": "Description"
+        }
+    },
+    "required": [
+        "image_search",
+        "activity_type",
+        "question",
+        "hint",
+        "right_answer_feedback",
+        "description"
+    ],
+    "title": "Quiz",
+    "type": "object"
+}
