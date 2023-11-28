@@ -1,149 +1,93 @@
-// assistant.js
-
+require('dotenv').config()
 const express = require('express')
 const OpenAI = require('openai')
 const { v4: uuidv4 } = require('uuid')
-const axios = require('axios')
-const { extractJSON } = require('./utils')
 
-// Set default axios baseURL
+const { extractJSON, sendJobEvent, getActivityJSONStructure } = require('./utils')
+const axios = require('axios')
+
 axios.defaults.baseURL = 'http://localhost:3030'
 
-// Initialize Express router
 const router = express.Router()
 
-// Constants
-const jobsEndpoint = '/assistant/jobs'
 const TT_ASSISTANT_ID = `asst_LotLGvLUwWyKueeXGg0Zg3og`
 const PROMPT_ASSISTANT_ID = `asst_R9yVGhxeZMgxoVBVBBZpDJRz`
 
-// In-memory store for clients and jobs
 const clients = {}
 const jobs = {}
 
-// Configurations
 const config = {
   OPENAI_API_KEY: process.env.VITE_OPENAI_API_KEY,
   DID_API_KEY: process.env.VITE_DID_API_KEY,
 }
 console.log('Config:', config)
-// Initialize OpenAI instance
+
 const openai = new OpenAI({
   apiKey: config.OPENAI_API_KEY,
 })
 
-// Helper Functions
-
-/**
- * Posts a job event to a specified endpoint.
- * @param {string} jobId - Unique identifier for the job.
- * @param {object} data - Data to be sent with the job event.
- */
-const sendJobEvent = async (jobId, data) => {
-  await axios.post(jobsEndpoint, { jobId, ...data })
-  console.log(jobsEndpoint, { jobId, ...data })
-}
-
-/**
- * Handles tool calls based on the type of function.
- * @param {object} toolCall - The tool call object.
- * @returns {Promise<object>} - The result of the tool call handling.
- */
-async function handleToolCall(toolCall, sendJobEventToSSE, runId, threadId) {
+const handleToolCall = async (toolCall, sendJobEventToSSE, runId, threadId) => {
   const { type, function: func } = toolCall
   console.log('toolCall', toolCall)
   if (type !== 'function') {
     throw new Error(`Unhandled tool call: ${JSON.stringify(toolCall)}`)
   }
 
-  let args
   switch (func.name) {
+    case 'get_activity_structure':
+      return getActivityStructure(func.arguments, sendJobEventToSSE, runId, threadId)
     case 'create_images':
       return createImages(func.arguments, sendJobEventToSSE)
     case 'visualize_slide':
       return visualizeSlide(func.arguments, sendJobEventToSSE, runId, threadId)
-
-    //case 'parallel':
-    //return handleParrallelTools(func.arguments, sendJobEventToSSE, runId, threadId)
+    case 'parallel':
+      return handleParallelTools(toolCall, sendJobEventToSSE, runId, threadId)
     default:
-      return toolCall
       throw new Error(`Unhandled tool call: ${JSON.stringify(toolCall)}`)
   }
 }
 
-/**
- * Waits for a run to complete, retrying a specified number of times.
- * @param {string} threadId - ID of the thread.
- * @param {string} runId - ID of the run.
- * @param {number} maxRetries - Maximum number of retries.
- * @returns {Promise<object>} - The status and additional data of the run.
- */
-async function waitForRunCompletion(threadId, runId, maxRetries = 100, sendJobEventToSSE) {
+async function waitForRunCompletion(threadId, runId, maxRetries = 200, sendJobEventToSSE) {
   let actionsToFront = []
 
   for (let i = 0; i < maxRetries; i++) {
     const runStatus = await openai.beta.threads.runs.retrieve(threadId, runId)
-    console.log('Run Status:', runStatus.status)
-    sendJobEventToSSE({
-      message: `Run Status: ${runStatus.status}`,
-      data: { runId, threadId, assinstantId: TT_ASSISTANT_ID, status: runStatus.status },
-    })
+    console.log('Run Status:', runStatus.status, 'Retry:', i)
 
     if (runStatus.status === 'requires_action') {
       const requiredAction = runStatus.required_action
       console.log('Action Type:', requiredAction.type)
-      sendJobEventToSSE({
-        message: `Require Action Type: ${requiredAction.type}`,
-        data: {
-          runId,
-          threadId,
-          assinstantId: TT_ASSISTANT_ID,
-          status: runStatus.status,
-          actionType: requiredAction.type,
-        },
-      })
+
+      const { tool_calls } = requiredAction.submit_tool_outputs
+      console.log('Tool Calls:', tool_calls)
+
+      const results = await Promise.all(
+        tool_calls.map((toolCall) => handleToolCall(toolCall, sendJobEventToSSE, runId, threadId)),
+      )
+
+      const tools_output = results.map((result, index) => ({
+        tool_call_id: tool_calls[index].id,
+        output: JSON.stringify(result),
+      }))
 
       if (requiredAction.type === 'submit_tool_outputs') {
-        const { tool_calls } = requiredAction.submit_tool_outputs
-
-        sendJobEventToSSE({
-          message: `submit_tool_outputs: ${JSON.stringify(tool_calls)}`,
-          data: { runId, threadId, assinstantId: TT_ASSISTANT_ID, status: 'tool_calls' },
+        await openai.beta.threads.runs.submitToolOutputs(threadId, runId, {
+          tool_outputs: tools_output,
         })
-
-        for (const toolCall of tool_calls) {
-          const result = await handleToolCall(toolCall, sendJobEventToSSE, runId, threadId)
-
-          await openai.beta.threads.runs.submitToolOutputs(threadId, runId, {
-            tool_outputs: [
-              {
-                tool_call_id: toolCall.id,
-                output: JSON.stringify(result),
-              },
-            ],
-          })
-        }
       }
     }
 
     if (runStatus.status === 'completed') {
       return { runStatus, actionsToFront }
     }
+    if (runStatus.status === 'failed') {
+      return { runStatus }
+    }
 
     await new Promise((resolve) => setTimeout(resolve, 2000))
   }
 
   throw new Error('Run did not complete within the specified maxRetries')
-}
-
-/**
- * Simulates a delay for asynchronous operations.
- * @returns {Promise<void>}
- */
-async function doSomeWork() {
-  return new Promise((resolve) => {
-    setTimeout(resolve, 10000)
-  })
 }
 
 // Route Handlers
@@ -169,10 +113,10 @@ router.post('/message', async (req, res) => {
     let step = 0
     const sendJobEventToSSE = async (data = { message: `Step ${step} complete` }) => {
       step = step + 1
-      sendJobEvent(jobId, { step: step, ...data })
+      sendJobEvent(jobId, { ...data, step })
     }
 
-    sendJobEventToSSE({ message: 'Starting' })
+    sendJobEventToSSE({ status: 'Starting' })
     const additionalData = {}
     let thread = threadId ? await openai.beta.threads.retrieve(threadId) : await openai.beta.threads.create()
     let assistant = await openai.beta.assistants.retrieve(TT_ASSISTANT_ID)
@@ -183,37 +127,29 @@ router.post('/message', async (req, res) => {
     const _assinstantId = assistant.id
 
     sendJobEventToSSE({
+      status: 'initiated',
       message: 'Assistant run initiated',
-      data: { runId: _runId, threadId: _threadId, assinstantId: _assinstantId },
+      runId: _runId,
+      threadId: _threadId,
+      assinstantId: _assinstantId,
     })
     const completion = await waitForRunCompletion(_threadId, _runId, undefined, sendJobEventToSSE)
 
     sendJobEventToSSE({
+      status: 'completion',
       message: 'Completion Ready',
-      data: {
-        completion: JSON.stringify(completion.additionalData),
-        runId: _runId,
-        threadId: _threadId,
-        assinstantId: _assinstantId,
-      },
+      completion: JSON.stringify(completion.additionalData),
+      runId: _runId,
+      threadId: _threadId,
+      assinstantId: _assinstantId,
     })
 
-    console.log('completion>>>>>>', {
-      actions: [], //actionsToFront,
-      completion: JSON.stringify(completion.additionalData),
-    })
-    /*
-    if (actionsToFront.length > 0) {
-      additionalData.actions = actionsToFront
-    }
-*/
     const messages = await openai.beta.threads.messages.list(thread.id)
-    console.log('MESSAGES>>>>>', { messages })
 
     const lastMessageForRun = messages.data
       .filter((message) => message.run_id === run.id && message.role === 'assistant')
       .pop()
-    console.log(lastMessageForRun, '<<<<<<lastMessageForRun')
+    //console.log(lastMessageForRun, '<<<<<<lastMessageForRun')
     additionalData.runId = run.id
 
     if (lastMessageForRun) {
@@ -222,13 +158,12 @@ router.post('/message', async (req, res) => {
         additionalData.speechFile = speechFile
       }
       sendJobEventToSSE({
+        status: 'tts-ready',
         message: 'Completed',
-        data: {
-          response: lastMessageForRun.content[0].text.value,
-          runId: _runId,
-          threadId: _threadId,
-          assinstantId: _assinstantId,
-        },
+        response: lastMessageForRun.content[0].text.value,
+        runId: _runId,
+        threadId: _threadId,
+        assinstantId: _assinstantId,
       })
 
       res
@@ -245,19 +180,11 @@ router.post('/message', async (req, res) => {
 })
 
 /**
- * GET route handler for '/ping-pong'.
- */
-router.get('/ping-pong', (req, res) => {
-  res.send('pong')
-})
-
-/**
  * POST route handler for '/jobs'.
  */
 router.post('/jobs', (req, res) => {
-  const { jobId, step, data } = req.body
-  jobs[jobId] = { step, data }
-
+  const { jobId, data } = req.body
+  jobs[jobId] = data
   if (clients[jobId]) {
     clients[jobId].write(`data: ${JSON.stringify(jobs[jobId])}\n\n`)
   }
@@ -289,15 +216,6 @@ router.get('/jobs/:jobId', (req, res) => {
 
 // Additional Helper Functions
 
-/**
- * Initiates an assistant run with provided parameters.
- * @param {object} thread - Thread object from OpenAI.
- * @param {object} assistant - Assistant object from OpenAI.
- * @param {string} prompt - Prompt for the assistant.
- * @param {boolean} startConversation - Indicates if the conversation is starting.
- * @returns {Promise<object>} - The initiated run.
- */
-
 async function initiateAssistantRun(thread, assistant, prompt, startConversation) {
   let instructions = []
   let messageContent = startConversation
@@ -314,70 +232,132 @@ async function initiateAssistantRun(thread, assistant, prompt, startConversation
     instructions: instructions.join(' '),
   })
 }
+
+async function getActivityStructure(_activity, sendJobEventToSSE, runId, threadId) {
+  const activity = typeof _activity === 'string' ? JSON.parse(_activity) : _activity
+  console.log(activity.activity_type, typeof _activity)
+  const response = await getActivityJSONStructure(activity.activity_type)
+    .then((content) => {
+      return { success: true, activity_structure: content }
+    })
+    .catch((error) => {
+      console.error(error)
+      return { success: false }
+    })
+  console.log(response)
+  return response
+}
 async function createImages(images = [], sendJobEventToSSE) {
   let thread = await openai.beta.threads.create()
   let assistant = await openai.beta.assistants.retrieve(PROMPT_ASSISTANT_ID)
-  let run = await initiateAssistantRun(thread, assistant, JSON.stringify({ images: images }), undefined)
+  let run = await initiateAssistantRun(
+    thread,
+    assistant,
+    `keep the prompts simple, no more than 15 words, here is my input: ${JSON.stringify({ images: images })}`,
+    undefined,
+  )
   const completion = await waitForRunCompletion(thread.id, run.id, undefined, sendJobEventToSSE)
 
   const messages = await openai.beta.threads.messages.list(thread.id)
-  console.log('MESSAGES>>>>>', { messages: messages.data })
+  //console.log('MESSAGES>>>>>', { messages: messages.data })
 
   const lastMessageForRun = messages.data
     .filter((message) => message.run_id === run.id && message.role === 'assistant')
     .pop()
 
-  console.log(lastMessageForRun, '<<<<<<lastMessageForRun')
+  //console.log(lastMessageForRun, '<<<<<<lastMessageForRun')
 
-  const imageUrls = []
   if (lastMessageForRun) {
     const json = extractJSON(lastMessageForRun.content[0].text.value)
     const msg = json[0]
     const images = msg.prompts
-    for (const image of images) {
-      const response = await openai.createImage({
-        prompt: `${image.prompt}`,
-        n: 1,
-        size: '256x256',
-      })
-      imageUrls.push(response.data.data[0].url)
-    }
+
+    // Create an array of promises for each image request
+    const imageRequests = images.map((image) => {
+      return openai.images
+        .generate({
+          prompt: image.prompt,
+          size: '256x256',
+        })
+        .then((response) => {
+          const { data } = response
+          const imageUrl = data.data ? data.data[0].url : data[0].url
+          return { id: image.id, url: imageUrl, prompt: image.prompt }
+        })
+    })
+
+    // Wait for all promises to resolve
+    const imageUrls = await Promise.all(imageRequests)
+
+    // Send event to SSE
+    sendJobEventToSSE({
+      status: `createImages`,
+      runId: run.id,
+      threadId: thread.id,
+      assistantId: PROMPT_ASSISTANT_ID,
+      imageUrls: imageUrls,
+    })
+
+    return { success: true, images: imageUrls }
   }
 
-  sendJobEventToSSE({
-    message: `createImages`,
-    data: { runId: run.id, threadId: thread.id, assinstantId: PROMPT_ASSISTANT_ID, imageUrls: imageUrls },
-  })
-  return { imageUrls }
+  return { success: false, images: [] }
 }
 
 async function visualizeSlide(slide, sendJobEventToSSE, runId, threadId) {
   console.log(JSON.stringify(slide))
 
   sendJobEventToSSE({
-    message: `visualizeSlide`,
-    data: { runId: runId, threadId: threadId, assinstantId: TT_ASSISTANT_ID, slide: slide },
+    status: `visualizeSlide`,
+    runId: runId,
+    threadId: threadId,
+    assinstantId: TT_ASSISTANT_ID,
+    slide: slide,
   })
   return slide
 }
+/*
+const returnToolCall = (func, sendJobEventToSSE, runId, threadId, toolCall) => {
+  switch (func.name) {
+    case 'get_activity_structure':
+      return getActivityStructure(func.arguments, sendJobEventToSSE, runId, threadId)
+    case 'create_images':
+      return createImages(func.arguments, sendJobEventToSSE)
+    case 'visualize_slide':
+      return visualizeSlide(func.arguments, sendJobEventToSSE, runId, threadId)
+    case 'parallel':
+      return handleParallelTools(func, sendJobEventToSSE, runId, threadId)
+    default:
+      return toolCall
+      throw new Error(`Unhandled tool call: ${JSON.stringify(toolCall)}`)
+  }
+}*/
+async function handleParallelTools(_toolCall, sendJobEventToSSE, runId, threadId) {
+  // Parse the function argument to extract the tool uses
+  const { function: func, id: toolCallId } = _toolCall
+  const parsedArguments = JSON.parse(func.arguments)
 
-async function handleParrallelTools(func) {
-  return func
-  /*
-  const tool_calls = func.arguments
-  for (const toolCall of tool_calls) {
-    const result = await handleToolCall(toolCall)
+  const toolUses = parsedArguments.tool_uses
 
-    await openai.beta.threads.runs.submitToolOutputs(threadId, runId, {
-      tool_outputs: [
-        {
-          tool_call_id: toolCall.id,
-          output: JSON.stringify(result),
-        },
-      ],
-    })
-  }*/
+  // Map each tool use to a function call using returnToolCall
+  const parallelRequests = toolUses.map((toolUse) => {
+    // Construct the function call object
+    console.log('TOOL USE', toolUse)
+
+    const n_function = {
+      name: toolUse.recipient_name.split('.')[1], // Extract function name from recipient_name
+      arguments: toolUse.parameters,
+    }
+    const toolCall = { type: 'function', function: n_function, id: toolCallId }
+    console.log('Parallel Tool Call', toolCall)
+    // Use returnToolCall to initiate the correct async function
+    return handleToolCall(toolCall, sendJobEventToSSE, runId, threadId)
+  })
+
+  // Wait for all promises to resolve and return the results
+  return Promise.all(parallelRequests)
 }
+
 // Export the router module
 module.exports = router
 
