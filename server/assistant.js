@@ -80,8 +80,18 @@ async function waitForRunCompletion(threadId, runId, maxRetries = 200, sendJobEv
     if (runStatus.status === 'completed') {
       return { runStatus, actionsToFront }
     }
+
     if (runStatus.status === 'failed') {
-      return { runStatus }
+      //console.log('Run failed', { runStatus })
+      const message = runStatus.last_error
+        ? runStatus.last_error.message
+        : 'Run failed due to unknown reason, please refresh and try again'
+      const code = runStatus.last_error ? runStatus.last_error.code : 'unknown'
+      throw new Error(`[${code}] ${message}`)
+    }
+
+    if (runStatus.status === 'failed') {
+      return { runStatus, error: 'Run failed due to unknown reason, please refresh and try again' }
     }
 
     await new Promise((resolve) => setTimeout(resolve, 2000))
@@ -108,14 +118,14 @@ router.post('/message', async (req, res) => {
     images: shouldGenerateImages,
     startConversation,
   } = req.body
+  let step = 0
+
+  const sendJobEventToSSE = async (data = { message: `Step ${step} complete` }) => {
+    step = step + 1
+    sendJobEvent(jobId, { ...data, step })
+  }
 
   try {
-    let step = 0
-    const sendJobEventToSSE = async (data = { message: `Step ${step} complete` }) => {
-      step = step + 1
-      sendJobEvent(jobId, { ...data, step })
-    }
-
     sendJobEventToSSE({ status: 'Starting' })
     const additionalData = {}
     let thread = threadId ? await openai.beta.threads.retrieve(threadId) : await openai.beta.threads.create()
@@ -154,18 +164,34 @@ router.post('/message', async (req, res) => {
 
     if (lastMessageForRun) {
       if (shouldGenerateTTS) {
+        sendJobEventToSSE({
+          status: 'tts',
+          message: 'TTS Started',
+          response: speechFile,
+          runId: _runId,
+          threadId: _threadId,
+          assinstantId: _assinstantId,
+        })
         const speechFile = await createTTS(lastMessageForRun.content[0].text.value)
         additionalData.speechFile = speechFile
+        sendJobEventToSSE({
+          status: 'tts',
+          message: 'TTS Ready',
+          response: speechFile,
+          runId: _runId,
+          threadId: _threadId,
+          assinstantId: _assinstantId,
+        })
       }
       sendJobEventToSSE({
-        status: 'tts-ready',
-        message: 'Completed',
+        status: 'finish',
+        message: 'Generation Ready',
         response: lastMessageForRun.content[0].text.value,
+        completion: JSON.stringify(completion.additionalData),
         runId: _runId,
         threadId: _threadId,
         assinstantId: _assinstantId,
       })
-
       res
         .status(200)
         .json({ response: lastMessageForRun.content[0].text.value, threadId: thread.id, ...additionalData })
@@ -174,6 +200,12 @@ router.post('/message', async (req, res) => {
     }
     //return res.send('Done')
   } catch (err) {
+    sendJobEventToSSE({
+      status: 'failed',
+      message: 'Generation Failed',
+      response: 'Something went wrong, please try again',
+    })
+    delete jobs[jobId]
     console.warn('Error:', err)
     return res.status(500).send(err)
   }
@@ -234,6 +266,13 @@ async function initiateAssistantRun(thread, assistant, prompt, startConversation
 }
 
 async function getActivityStructure(_activity, sendJobEventToSSE, runId, threadId) {
+  sendJobEventToSSE({
+    status: `getActivityStructure`,
+    message: 'checking activity structure',
+    runId: runId,
+    threadId: threadId,
+    assistantId: TT_ASSISTANT_ID,
+  })
   const activity = typeof _activity === 'string' ? JSON.parse(_activity) : _activity
   console.log(activity.activity_type, typeof _activity)
   const response = await getActivityJSONStructure(activity.activity_type)
@@ -245,17 +284,33 @@ async function getActivityStructure(_activity, sendJobEventToSSE, runId, threadI
       return { success: false }
     })
   console.log(response)
+  sendJobEventToSSE({
+    status: `getActivityStructure`,
+    message: 'returned activity structure',
+    runId: runId,
+    threadId: threadId,
+    assistantId: TT_ASSISTANT_ID,
+  })
   return response
 }
+
 async function createImages(images = [], sendJobEventToSSE) {
   let thread = await openai.beta.threads.create()
   let assistant = await openai.beta.assistants.retrieve(PROMPT_ASSISTANT_ID)
   let run = await initiateAssistantRun(
     thread,
     assistant,
-    `keep the prompts simple, no more than 15 words, here is my input: ${JSON.stringify({ images: images })}`,
+    `here is my input: ${JSON.stringify({ images: images })}`,
     undefined,
   )
+  sendJobEventToSSE({
+    status: `createImages`,
+    message: 'starting image generation',
+    runId: run.id,
+    threadId: thread.id,
+    assistantId: PROMPT_ASSISTANT_ID,
+  })
+
   const completion = await waitForRunCompletion(thread.id, run.id, undefined, sendJobEventToSSE)
 
   const messages = await openai.beta.threads.messages.list(thread.id)
@@ -269,36 +324,52 @@ async function createImages(images = [], sendJobEventToSSE) {
 
   if (lastMessageForRun) {
     const json = extractJSON(lastMessageForRun.content[0].text.value)
-    const msg = json[0]
-    const images = msg.prompts
+    if (json && json.length) {
+      const msg = json[0]
+      console.log('createImages - lastMessageForRun', msg)
+      const images = msg.prompts
 
-    // Create an array of promises for each image request
-    const imageRequests = images.map((image) => {
-      return openai.images
-        .generate({
-          prompt: image.prompt,
-          size: '256x256',
-        })
-        .then((response) => {
-          const { data } = response
-          const imageUrl = data.data ? data.data[0].url : data[0].url
-          return { id: image.id, url: imageUrl, prompt: image.prompt }
-        })
-    })
+      // Create an array of promises for each image request
+      const imageRequests = images.map((image) => {
+        /*
+      return openai.createImage({
+        model: 'dall-e-3',
+        n: 1,
+        prompt: image.prompt,
+        size: '512x512',
+      })*/
 
-    // Wait for all promises to resolve
-    const imageUrls = await Promise.all(imageRequests)
+        return openai.images
+          .generate({
+            model: 'dall-e-3',
+            prompt: image.prompt,
+            quality: 'hd',
+            n: 1,
+            //size: "1024x1024",
+            //size: '512x512',
+          })
+          .then((response) => {
+            const { data } = response
+            const imageUrl = data.data ? data.data[0].url : data[0].url
+            return { image_id: image.id, image_url: imageUrl, image_prompt: image.prompt }
+          })
+      })
 
-    // Send event to SSE
-    sendJobEventToSSE({
-      status: `createImages`,
-      runId: run.id,
-      threadId: thread.id,
-      assistantId: PROMPT_ASSISTANT_ID,
-      imageUrls: imageUrls,
-    })
+      // Wait for all promises to resolve
+      const imageUrls = await Promise.all(imageRequests)
 
-    return { success: true, images: imageUrls }
+      // Send event to SSE
+      sendJobEventToSSE({
+        status: `createImages`,
+        message: 'ended image generation',
+        runId: run.id,
+        threadId: thread.id,
+        assistantId: PROMPT_ASSISTANT_ID,
+        imageUrls: imageUrls,
+      })
+
+      return { success: true, images: imageUrls }
+    }
   }
 
   return { success: false, images: [] }
@@ -309,6 +380,7 @@ async function visualizeSlide(slide, sendJobEventToSSE, runId, threadId) {
 
   sendJobEventToSSE({
     status: `visualizeSlide`,
+    message: `visualizing slide`,
     runId: runId,
     threadId: threadId,
     assinstantId: TT_ASSISTANT_ID,
@@ -316,22 +388,7 @@ async function visualizeSlide(slide, sendJobEventToSSE, runId, threadId) {
   })
   return slide
 }
-/*
-const returnToolCall = (func, sendJobEventToSSE, runId, threadId, toolCall) => {
-  switch (func.name) {
-    case 'get_activity_structure':
-      return getActivityStructure(func.arguments, sendJobEventToSSE, runId, threadId)
-    case 'create_images':
-      return createImages(func.arguments, sendJobEventToSSE)
-    case 'visualize_slide':
-      return visualizeSlide(func.arguments, sendJobEventToSSE, runId, threadId)
-    case 'parallel':
-      return handleParallelTools(func, sendJobEventToSSE, runId, threadId)
-    default:
-      return toolCall
-      throw new Error(`Unhandled tool call: ${JSON.stringify(toolCall)}`)
-  }
-}*/
+
 async function handleParallelTools(_toolCall, sendJobEventToSSE, runId, threadId) {
   // Parse the function argument to extract the tool uses
   const { function: func, id: toolCallId } = _toolCall

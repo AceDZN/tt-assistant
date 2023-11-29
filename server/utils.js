@@ -37,7 +37,7 @@ const sendJobEvent = async (jobId, data) => {
 
 async function getActivityJSONStructure(activity_type) {
   try {
-    const filePath = path.join(__dirname, `/prompts/activities/${activity_type}_structure.json`)
+    const filePath = path.join(__dirname, `/prompts/activities/${activity_type}.json`)
     const data = await fs.readFile(filePath, 'utf8')
     return typeof data === 'string' ? JSON.parse(data) : data
   } catch (error) {

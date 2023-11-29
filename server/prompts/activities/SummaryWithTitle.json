@@ -1,33 +1,58 @@
 {
-    "properties": {
-        "activity_type": {
-            "const": "SummaryWithTitle",
-            "title": "Activity Type"
-        },
-        "description": {
-            "const": "descriptive slide featuring a title and an informative paragraph about the subject.",
-            "title": "Description"
-        },
-        "text": {
-            "description": "a comprehensive information block on the subject, comprising at least 40 words.",
-            "maxLength": 400,
-            "minLength": 200,
-            "title": "Text",
-            "type": "string"
-        },
-        "title": {
-            "description": "A relevant and engaging title for the slide, minimum 4 words.",
-            "maxLength": 100,
-            "title": "Title",
-            "type": "string"
-        }
+  "properties": {
+    "activity_type": {
+      "const": "SummaryWithTitle",
+      "title": "Activity Type"
     },
-    "required": [
-        "activity_type",
-        "description",
-        "text",
-        "title"
-    ],
-    "title": "SummaryWithTitle",
-    "type": "object"
+    "description": {
+      "const": "descriptive slide featuring a title and an informative paragraph about the subject.",
+      "title": "Description"
+    },
+    "text": {
+      "description": "a comprehensive information block on the subject, comprising at least 40 words.",
+      "maxLength": 400,
+      "minLength": 200,
+      "title": "Text",
+      "type": "string"
+    },
+    "title": {
+      "description": "A relevant and engaging title for the slide, minimum 4 words.",
+      "maxLength": 100,
+      "title": "Title",
+      "type": "string"
+    },
+    "image_prompt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "the image_prompt returned from the `create_images` call",
+      "title": "Image Search"
+    },
+    "image_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "the image_url returned from the `create_images`call",
+      "title": "Image Url"
+    },
+    "image_id": {
+      "type": "string",
+      "description": "the image_id returned from the `create_images`call",
+      "title": "Image Id"
+    }
+  },
+  "required": ["activity_type", "image_prompt", "image_id", "image_url", "description", "text", "title"],
+  "title": "SummaryWithTitle",
+  "type": "object"
 }
+

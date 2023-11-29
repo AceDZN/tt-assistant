@@ -13,27 +13,28 @@
 </head>
 <body>
 <div id="app">
-<div class="sidebar">
-  <div class="user-image-container">
-      <div class="video-container">
-        <video id="talk-video" width="100%" autoplay></video>
-        <video id="idle-video" width="100%" autoplay muted></video>
-      </div>
-
-    <div class="user-image"></div>
-  </div>
-  <div id="root"></div>
   
-</div>
 
-<div class="main-content-container">
-  <div class="main-content-floater">
-    <div class="main-content">
-      <code id="slide_content">SLIDE CONTENT WILL APPEAR HERE</code>
-      <div id="image_container"></div>
+  <div class="main-content-container">
+    <div class="main-content-floater">
+      <div class="main-content" id="main-content">
+        <div id="slide_content"></div>
+        <div id="image_container"></div>
+      </div>
     </div>
   </div>
-</div>
+  <div class="sidebar">
+    <div class="user-image-container">
+        <div class="video-container">
+          <video id="talk-video" width="100%" autoplay></video>
+          <video id="idle-video" width="100%" autoplay muted></video>
+        </div>
+
+      <div class="user-image"></div>
+    </div>
+    <div id="root"></div>
+    
+  </div>
 </div>
 <script type="module" src="/src/streaming.js"></script>
 <script type="module" src="/src/main.tsx"></script>

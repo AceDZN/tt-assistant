@@ -13,7 +13,7 @@ body {
 
   display: grid;
   gap: 20px;
-  grid-template-columns: 1fr 3fr;
+  grid-template-columns: 3fr 1fr;
 }
 
 .sidebar {
@@ -59,13 +59,27 @@ body {
   flex-direction: column;
   background: green;
 }
+#slide_content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  max-height: 100%;
+  width: 100%;
+  font-family: monospace;
+}
 
 #image_container {
-  display: flex;
+  opacity: 0;
+  position: absolute;
+  top: 0;
   flex-direction: row;
   justify-content: space-between;
   overflow: hidden;
+  left: 0;
+  width: 1px;
 }
+
 #image_container img {
   width: 320px;
   max-width: 50%;
