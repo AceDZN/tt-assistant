@@ -3,7 +3,7 @@ const express = require('express')
 const OpenAI = require('openai')
 const { v4: uuidv4 } = require('uuid')
 
-const { extractJSON, sendJobEvent, getActivityJSONStructure } = require('./utils')
+const { extractJSON, sendJobEvent, getActivityJSONStructure, saveCreatedImageLocally } = require('./utils')
 const axios = require('axios')
 
 axios.defaults.baseURL = 'http://localhost:3030'
@@ -293,8 +293,74 @@ async function getActivityStructure(_activity, sendJobEventToSSE, runId, threadI
   })
   return response
 }
+async function createImages(data = {}, sendJobEventToSSE) {
+  // Function to handle the creation of a single image
+  sendJobEventToSSE({
+    status: `createImages`,
+    message: 'starting image generation',
+    runId: run.id,
+    threadId: thread.id,
+    assistantId: PROMPT_ASSISTANT_ID,
+  })
+  async function handleSingleImage(image) {
+    // Create a new thread for each image
+    let thread = await openai.beta.threads.create()
+    let assistant = await openai.beta.assistants.retrieve(PROMPT_ASSISTANT_ID)
 
-async function createImages(images = [], sendJobEventToSSE) {
+    // Generate prompt for the image
+    let run = await initiateAssistantRun(
+      thread,
+      assistant,
+      `Generate prompt for image with keywords: ${image.keywords}`,
+      undefined,
+    )
+
+    // Wait for prompt generation to complete
+    const completion = await waitForRunCompletion(thread.id, run.id, undefined, sendJobEventToSSE)
+    const messages = await openai.beta.threads.messages.list(thread.id)
+    const lastMessage = messages.data.find((message) => message.run_id === run.id && message.role === 'assistant')
+
+    // Extract the generated prompt from the message
+    const generatedPrompt = lastMessage ? lastMessage.content[0].text.value : ''
+
+    // Create the image using the generated prompt
+    const imageResponse = await openai.images.generate({
+      model: 'dall-e-3',
+      prompt: generatedPrompt,
+      quality: 'hd',
+      n: 1,
+    })
+    const imageUrl = imageResponse.data[0].url
+
+    const imageObject = { image_id: image.id, image_url: imageUrl, image_prompt: generatedPrompt }
+    const savedImagePath = await saveCreatedImageLocally(imageObject)
+    if (savedImagePath) {
+      imageObject.image_url = savedImagePath
+    }
+    // Return the image object
+
+    return imageObject
+  }
+  const fixedData = typeof data === 'string' ? JSON.parse(data) : data
+  const { images } = fixedData
+  // Map each image request to a promise and execute in parallel
+  const imagePromises = images.map((image) => handleSingleImage(image))
+  const imageResults = await Promise.all(imagePromises)
+
+  // Send event to SSE
+  sendJobEventToSSE({
+    status: `createImages`,
+    message: 'ended image generation',
+    runId: run.id,
+    threadId: thread.id,
+    assistantId: PROMPT_ASSISTANT_ID,
+    imageUrls: imageUrls,
+  })
+  // Return the array of image objects
+  return { success: true, images: imageResults }
+}
+
+async function createImagesOld(images = [], sendJobEventToSSE) {
   let thread = await openai.beta.threads.create()
   let assistant = await openai.beta.assistants.retrieve(PROMPT_ASSISTANT_ID)
   let run = await initiateAssistantRun(
@@ -331,14 +397,6 @@ async function createImages(images = [], sendJobEventToSSE) {
 
       // Create an array of promises for each image request
       const imageRequests = images.map((image) => {
-        /*
-      return openai.createImage({
-        model: 'dall-e-3',
-        n: 1,
-        prompt: image.prompt,
-        size: '512x512',
-      })*/
-
         return openai.images
           .generate({
             model: 'dall-e-3',

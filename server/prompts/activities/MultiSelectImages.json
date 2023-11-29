@@ -29,7 +29,7 @@
         },
         "image_id": {
           "type": "string",
-          "description": "the image_id returned from the `create_images`call",
+          "description": "the image_id returned from the `create_images` call",
           "title": "Image Id"
         },
         "correct": {

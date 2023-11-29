@@ -208,7 +208,7 @@ function StreamingStatus(props: any) {
         }
         if (window.handleTalk && window.iceConnectionState === 'connected') {
           console.log('window.handleTalk', { text, iceConnectionState: window.iceConnectionState })
-          await window.handleTalk()
+          await window.handleTalk(text)
         }
       }
       /*

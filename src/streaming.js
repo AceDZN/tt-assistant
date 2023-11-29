@@ -156,12 +156,16 @@ if (connectButton) {
 
 // This is changed to accept the ChatGPT response as Text input to D-ID #138 responseFromOpenAI
 
-const handleTalk = async () => {
+const handleTalk = async (userPrompt) => {
   if (peerConnection?.signalingState === 'stable' || peerConnection?.iceConnectionState === 'connected') {
     //
     // New from Jim 10/23 -- Get the user input from the text input field get ChatGPT Response
     const userInput = document.getElementById('user-input-field')?.value
-    const responseFromOpenAI = userInput ? userInput : `Hello there, how are you today? let's learn something new` // await fetchOpenAIResponse(userInput)
+    const responseFromOpenAI = userPrompt
+      ? userPrompt
+      : userInput
+      ? userInput
+      : `Hello there, how are you today? let's learn something new` // await fetchOpenAIResponse(userInput)
     //
     // Print the openAIResponse to the console
     console.log('OpenAI Response:', responseFromOpenAI)

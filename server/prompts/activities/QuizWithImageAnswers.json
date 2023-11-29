@@ -29,7 +29,7 @@
         },
         "image_id": {
           "type": "string",
-          "description": "the image_id returned from the `create_images`call",
+          "description": "the image_id returned from the `create_images` call",
           "title": "Image Id"
         },
         "correct": {
@@ -65,12 +65,12 @@
         }
       ],
 
-      "description": "the image_url returned from the `create_images`call, identified by {slide index}",
+      "description": "the image_url returned from the `create_images` call, only the original image_url response from the `create_images` call is allowed, identified by {slide index}",
       "title": "Image Url"
     },
     "image_id": {
       "type": "string",
-      "description": "the image_id returned from the `create_images`call",
+      "description": "the image_id returned from the `create_images` call",
       "title": "Image Id"
     },
     "activity_type": {

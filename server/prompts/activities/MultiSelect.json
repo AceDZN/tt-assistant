@@ -40,13 +40,14 @@
           "type": "null"
         }
       ],
-      "image_id": {
-        "type": "string",
-        "description": "the image_id returned from the `create_images`call",
-        "title": "Image Id"
-      },
-      "description": "the image_url returned from the `create_images`call",
+
+      "description": "the image_url returned from the `create_images` call, only the original image_url response from the `create_images` call is allowed, only the original image_url response from the `create_images` call is allowed",
       "title": "Image Url"
+    },
+    "image_id": {
+      "type": "string",
+      "description": "the image_id returned from the `create_images` call",
+      "title": "Image Id"
     },
     "activity_type": {
       "const": "MultiSelect",

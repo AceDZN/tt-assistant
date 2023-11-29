@@ -45,6 +45,26 @@ async function getActivityJSONStructure(activity_type) {
     throw new Error(`Error reading the file: ${error.message}`)
   }
 }
+async function downloadAndSaveImage(url, filename) {
+  const response = await axios({
+    url,
+    responseType: 'stream',
+  })
 
-module.exports = { extractJSON, sendJobEvent, getActivityJSONStructure }
+  const localPath = path.join(__dirname, 'images', filename)
+  response.data.pipe(fs.createWriteStream(localPath))
+
+  return new Promise((resolve, reject) => {
+    response.data.on('end', () => resolve(localPath))
+    response.data.on('error', (err) => reject(err))
+  })
+}
+
+async function saveCreatedImageLocally(image) {
+  const filename = `image-${image.image_id}-${Date.now()}.png` // Example filename
+  const localImagePath = await downloadAndSaveImage(image.image_url, filename)
+  // Return the local image path instead of the URL
+  return localImagePath
+}
+module.exports = { extractJSON, sendJobEvent, getActivityJSONStructure, saveCreatedImageLocally }
 
