@@ -12,6 +12,7 @@ const router = express.Router()
 
 const TT_ASSISTANT_ID = `asst_LotLGvLUwWyKueeXGg0Zg3og`
 const PROMPT_ASSISTANT_ID = `asst_R9yVGhxeZMgxoVBVBBZpDJRz`
+const TT_SLIDE_CREATOR_ASSISTANT_ID = `asst_24H0hGMLf4gyfrLbzBIArsRJ`
 
 const clients = {}
 const jobs = {}
@@ -34,6 +35,8 @@ const handleToolCall = async (toolCall, sendJobEventToSSE, runId, threadId) => {
   }
 
   switch (func.name) {
+    case 'create_slides':
+      return createSlides(func.arguments, sendJobEventToSSE, runId, threadId)
     case 'get_activity_structure':
       return getActivityStructure(func.arguments, sendJobEventToSSE, runId, threadId)
     case 'create_images':
@@ -59,7 +62,7 @@ async function waitForRunCompletion(threadId, runId, maxRetries = 200, sendJobEv
       console.log('Action Type:', requiredAction.type)
 
       const { tool_calls } = requiredAction.submit_tool_outputs
-      console.log('Tool Calls:', tool_calls)
+      //console.log('Tool Calls:', tool_calls)
 
       const results = await Promise.all(
         tool_calls.map((toolCall) => handleToolCall(toolCall, sendJobEventToSSE, runId, threadId)),
@@ -264,6 +267,66 @@ async function initiateAssistantRun(thread, assistant, prompt, startConversation
     instructions: instructions.join(' '),
   })
 }
+async function createSlides(data = {}, sendJobEventToSSE, _threadId) {
+  // Function to handle the creation of a single slide
+  async function handleSingleSlide(slideConfig, add_data) {
+    // Create a new thread for each image
+    let thread
+    if (_threadId) {
+      thread = await openai.beta.threads.retrieve(_threadId)
+    } else {
+      thread = await openai.beta.threads.create()
+    }
+    let assistant = await openai.beta.assistants.retrieve(TT_SLIDE_CREATOR_ASSISTANT_ID)
+
+    // Generate prompt for the image
+    let run = await initiateAssistantRun(
+      thread,
+      assistant,
+      `${JSON.stringify({ slideConfig, ...additionalData })}`,
+
+      undefined,
+    )
+
+    sendJobEventToSSE({
+      status: `createSlides`,
+      message: 'slide generation started',
+      runId: run.id,
+      threadId: thread.id,
+      assistantId: PROMPT_ASSISTANT_ID,
+    })
+    // Wait for prompt generation to complete
+    const completion = await waitForRunCompletion(thread.id, run.id, undefined, sendJobEventToSSE)
+    const messages = await openai.beta.threads.messages.list(thread.id)
+    const lastMessage = messages.data.find((message) => message.run_id === run.id && message.role === 'assistant')
+
+    // Extract the generated prompt from the message
+    const generatedSlide = lastMessage ? lastMessage.content[0].text.value : ''
+
+    const slideObject = { slide: generatedSlide }
+
+    sendJobEventToSSE({
+      status: `createSlides`,
+      message: 'slide generation ended',
+      runId: run.id,
+      threadId: thread.id,
+      assistantId: PROMPT_ASSISTANT_ID,
+      slide: slideObject,
+    })
+
+    return slideObject
+  }
+
+  const fixedData = typeof data === 'string' ? JSON.parse(data) : data
+  const { slides, student_age, student_interest, style } = fixedData
+  const additionalData = { student_age, student_interest, style }
+  // Map each slide request to a promise and execute in parallel
+  const slidePromises = slides.map((slideConfig) => handleSingleSlide(slideConfig, additionalData))
+  const slideResults = await Promise.all(slidePromises)
+
+  // Return the array of slide objects
+  return { success: true, slides: slideResults, ...additionalData }
+}
 
 async function getActivityStructure(_activity, sendJobEventToSSE, runId, threadId) {
   sendJobEventToSSE({
@@ -295,14 +358,8 @@ async function getActivityStructure(_activity, sendJobEventToSSE, runId, threadI
 }
 async function createImages(data = {}, sendJobEventToSSE) {
   // Function to handle the creation of a single image
-  sendJobEventToSSE({
-    status: `createImages`,
-    message: 'starting image generation',
-    runId: run.id,
-    threadId: thread.id,
-    assistantId: PROMPT_ASSISTANT_ID,
-  })
-  async function handleSingleImage(image) {
+
+  async function handleSingleImage(image, props) {
     // Create a new thread for each image
     let thread = await openai.beta.threads.create()
     let assistant = await openai.beta.assistants.retrieve(PROMPT_ASSISTANT_ID)
@@ -311,10 +368,17 @@ async function createImages(data = {}, sendJobEventToSSE) {
     let run = await initiateAssistantRun(
       thread,
       assistant,
-      `Generate prompt for image with keywords: ${image.keywords}`,
+      `here is my input: ${JSON.stringify({ ...props, image: image })}`,
+
       undefined,
     )
-
+    sendJobEventToSSE({
+      status: `createImages`,
+      message: 'image generation started',
+      runId: run.id,
+      threadId: thread.id,
+      assistantId: PROMPT_ASSISTANT_ID,
+    })
     // Wait for prompt generation to complete
     const completion = await waitForRunCompletion(thread.id, run.id, undefined, sendJobEventToSSE)
     const messages = await openai.beta.threads.messages.list(thread.id)
@@ -338,99 +402,27 @@ async function createImages(data = {}, sendJobEventToSSE) {
       imageObject.image_url = savedImagePath
     }
     // Return the image object
+    // Send event to SSE
+    sendJobEventToSSE({
+      status: `createImages`,
+      message: 'image generation ended',
+      runId: run.id,
+      threadId: thread.id,
+      assistantId: PROMPT_ASSISTANT_ID,
+      image: imageObject,
+    })
 
     return imageObject
   }
   const fixedData = typeof data === 'string' ? JSON.parse(data) : data
-  const { images } = fixedData
+  const { images, student_age, student_interest, style } = fixedData
+  const additionalData = { student_age, student_interest, style }
   // Map each image request to a promise and execute in parallel
-  const imagePromises = images.map((image) => handleSingleImage(image))
+  const imagePromises = images.map((image) => handleSingleImage(image, additionalData))
   const imageResults = await Promise.all(imagePromises)
 
-  // Send event to SSE
-  sendJobEventToSSE({
-    status: `createImages`,
-    message: 'ended image generation',
-    runId: run.id,
-    threadId: thread.id,
-    assistantId: PROMPT_ASSISTANT_ID,
-    imageUrls: imageUrls,
-  })
   // Return the array of image objects
   return { success: true, images: imageResults }
-}
-
-async function createImagesOld(images = [], sendJobEventToSSE) {
-  let thread = await openai.beta.threads.create()
-  let assistant = await openai.beta.assistants.retrieve(PROMPT_ASSISTANT_ID)
-  let run = await initiateAssistantRun(
-    thread,
-    assistant,
-    `here is my input: ${JSON.stringify({ images: images })}`,
-    undefined,
-  )
-  sendJobEventToSSE({
-    status: `createImages`,
-    message: 'starting image generation',
-    runId: run.id,
-    threadId: thread.id,
-    assistantId: PROMPT_ASSISTANT_ID,
-  })
-
-  const completion = await waitForRunCompletion(thread.id, run.id, undefined, sendJobEventToSSE)
-
-  const messages = await openai.beta.threads.messages.list(thread.id)
-  //console.log('MESSAGES>>>>>', { messages: messages.data })
-
-  const lastMessageForRun = messages.data
-    .filter((message) => message.run_id === run.id && message.role === 'assistant')
-    .pop()
-
-  //console.log(lastMessageForRun, '<<<<<<lastMessageForRun')
-
-  if (lastMessageForRun) {
-    const json = extractJSON(lastMessageForRun.content[0].text.value)
-    if (json && json.length) {
-      const msg = json[0]
-      console.log('createImages - lastMessageForRun', msg)
-      const images = msg.prompts
-
-      // Create an array of promises for each image request
-      const imageRequests = images.map((image) => {
-        return openai.images
-          .generate({
-            model: 'dall-e-3',
-            prompt: image.prompt,
-            quality: 'hd',
-            n: 1,
-            //size: "1024x1024",
-            //size: '512x512',
-          })
-          .then((response) => {
-            const { data } = response
-            const imageUrl = data.data ? data.data[0].url : data[0].url
-            return { image_id: image.id, image_url: imageUrl, image_prompt: image.prompt }
-          })
-      })
-
-      // Wait for all promises to resolve
-      const imageUrls = await Promise.all(imageRequests)
-
-      // Send event to SSE
-      sendJobEventToSSE({
-        status: `createImages`,
-        message: 'ended image generation',
-        runId: run.id,
-        threadId: thread.id,
-        assistantId: PROMPT_ASSISTANT_ID,
-        imageUrls: imageUrls,
-      })
-
-      return { success: true, images: imageUrls }
-    }
-  }
-
-  return { success: false, images: [] }
 }
 
 async function visualizeSlide(slide, sendJobEventToSSE, runId, threadId) {

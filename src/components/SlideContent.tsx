@@ -34,12 +34,13 @@ const Text = styled.p`
 `
 const AnswersContainer = styled.div`
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 12px;
+  justify-content: center;
 `
 const AnswerContainer = styled.div`
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   justify-content: space-between;
   gap: 12px;
 `

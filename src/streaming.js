@@ -266,6 +266,7 @@ function onIceCandidate(event) {
 }
 function onIceConnectionStateChange() {
   window.iceConnectionState = peerConnection.iceConnectionState
+  console.log('D-ID ICE connection status change: ', peerConnection.iceConnectionState)
   if (iceStatusLabel) {
     iceStatusLabel.innerText = peerConnection.iceConnectionState
     iceStatusLabel.className = 'iceConnectionState-' + peerConnection.iceConnectionState
@@ -275,16 +276,24 @@ function onIceConnectionStateChange() {
     closePC()
   }
 }
+function isDIDStateConnecting() {
+  return !!(window.iceConnectionState === 'checking')
+}
+window.isDIDStateConnecting = isDIDStateConnecting
+function isDIDStateConnected() {
+  return !!(window.iceConnectionState === 'connected' && window.peerSignalingState === 'stable')
+}
+window.isDIDStateConnected = isDIDStateConnected
 function onConnectionStateChange() {
   // not supported in firefox
-  window.peerStatusLabel = peerConnection.connectionState
+  window.peerConnectionState = peerConnection.connectionState
   if (peerStatusLabel) {
     peerStatusLabel.innerText = peerConnection.connectionState
     peerStatusLabel.className = 'peerConnectionState-' + peerConnection.connectionState
   }
 }
 function onSignalingStateChange() {
-  window.signalingStatusLabel = peerConnection.signalingState
+  window.peerSignalingState = peerConnection.signalingState
   if (signalingStatusLabel) {
     signalingStatusLabel.innerText = peerConnection.signalingState
     signalingStatusLabel.className = 'signalingState-' + peerConnection.signalingState

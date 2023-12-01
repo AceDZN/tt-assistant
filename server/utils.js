@@ -1,6 +1,7 @@
 const axios = require('axios')
 const { type } = require('os')
-const fs = require('fs').promises // If you're using a recent version of Node.js
+const fs = require('fs') // For stream operations
+const fsp = require('fs').promises // For promise-based file operations
 const path = require('path')
 
 function extractJSON(str) {
@@ -38,7 +39,7 @@ const sendJobEvent = async (jobId, data) => {
 async function getActivityJSONStructure(activity_type) {
   try {
     const filePath = path.join(__dirname, `/prompts/activities/${activity_type}.json`)
-    const data = await fs.readFile(filePath, 'utf8')
+    const data = await fsp.readFile(filePath, 'utf8')
     return typeof data === 'string' ? JSON.parse(data) : data
   } catch (error) {
     console.error(`Error reading the file: ${error.message}`)
@@ -51,12 +52,14 @@ async function downloadAndSaveImage(url, filename) {
     responseType: 'stream',
   })
 
-  const localPath = path.join(__dirname, 'images', filename)
-  response.data.pipe(fs.createWriteStream(localPath))
+  const localPath = path.join(__dirname, 'uploaded/images', filename)
+  const writer = fs.createWriteStream(localPath)
+
+  response.data.pipe(writer)
 
   return new Promise((resolve, reject) => {
-    response.data.on('end', () => resolve(localPath))
-    response.data.on('error', (err) => reject(err))
+    writer.on('finish', () => resolve(localPath))
+    writer.on('error', reject)
   })
 }
 
@@ -64,7 +67,7 @@ async function saveCreatedImageLocally(image) {
   const filename = `image-${image.image_id}-${Date.now()}.png` // Example filename
   const localImagePath = await downloadAndSaveImage(image.image_url, filename)
   // Return the local image path instead of the URL
-  return localImagePath
+  return 'http://localhost:3030/uploaded/images/' + filename
 }
 module.exports = { extractJSON, sendJobEvent, getActivityJSONStructure, saveCreatedImageLocally }
 

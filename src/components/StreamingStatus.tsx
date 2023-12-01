@@ -1,7 +1,7 @@
 // client.tsx
 import '@dotlottie/player-component'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import axios from 'axios'
 import { v4 as uuidv4 } from 'uuid'
 import styled from 'styled-components'
@@ -63,6 +63,8 @@ const CodeBlock = styled.code`
 `
 //const slideContainer = document.getElementById('slide_content')
 const imageContainer = document.getElementById('image_container')
+
+const AVATAR_CALL_DELAY = 5000
 function StreamingStatus(props: any) {
   const [threadId, setThreadId] = useState<string | null>(null)
   const [jobId, setJobId] = useState<string | null>(null)
@@ -78,6 +80,7 @@ function StreamingStatus(props: any) {
   const [subject, setSubject] = useState('new words')
   const [style, setStyle] = useState('Pixar')
   const [lessonStarted, setLessonStarted] = useState(false)
+  const lastTimeAvatarCalled = useRef<any>(null)
 
   const sendToOpenAi = useCallback(
     async (jobId: string, message: string) => {
@@ -114,7 +117,14 @@ function StreamingStatus(props: any) {
         } = data
         if (_step && _step !== step) setStep(_step)
 
-        if (_status && _status !== status) setStatus(_status)
+        if (_status && _status !== status) {
+          /***
+          if (_status !== 'idle') {
+            handleMessageTalk(`I just changed my status to ${_status}`)
+          } 
+          */
+          setStatus(_status)
+        }
 
         if (_slide && _slide !== slide) {
           const slideObject = JSON.parse(_slide)
@@ -201,15 +211,22 @@ function StreamingStatus(props: any) {
       if (!text || text === '') {
         return
       }
-      console.log('handleMessageTalk', { text })
-      if (status && status === 'finish') {
-        if ((window.handleConnect && !window.iceConnectionState) || window.iceConnectionState !== 'connected') {
-          await window.handleConnect()
-        }
-        if (window.handleTalk && window.iceConnectionState === 'connected') {
-          console.log('window.handleTalk', { text, iceConnectionState: window.iceConnectionState })
-          await window.handleTalk(text)
-        }
+      let isConnected = window.isDIDStateConnected && window.isDIDStateConnected()
+      let isConnecting = window.isDIDStateConnecting && window.isDIDStateConnecting()
+      const now = new Date().getTime()
+      if (lastTimeAvatarCalled.current && now - lastTimeAvatarCalled.current <= AVATAR_CALL_DELAY) {
+        console.log('handleMessageTalk: too soon to call avatar again')
+        return
+      }
+      lastTimeAvatarCalled.current = new Date().getTime()
+
+      if (window.handleConnect && !isConnected && !isConnecting) {
+        await window.handleConnect()
+      }
+
+      if (window.handleTalk && isConnected) {
+        console.log('window.handleTalk', { text, iceConnectionState: window.iceConnectionState })
+        await window.handleTalk(text)
       }
       /*
       return () => {
@@ -223,9 +240,11 @@ function StreamingStatus(props: any) {
   )
 
   useEffect(() => {
+    /*
     if (!!message && message !== '' && status && status === 'completion') {
       handleMessageTalk(message)
     }
+    */
     /*
     return () => {
       if (window.handleDestroy) {
@@ -235,6 +254,9 @@ function StreamingStatus(props: any) {
   }, [status, message])
 
   const startJob = async (_prompt?: string, onJobStart?: (e: boolean) => void) => {
+    if ((window.handleConnect && !window.iceConnectionState) || window.iceConnectionState !== 'connected') {
+      window.handleConnect()
+    }
     onJobStart?.(true)
     const jobId = uuidv4()
     setJobId(jobId)
@@ -256,7 +278,7 @@ function StreamingStatus(props: any) {
 
   const handleContinue = async () => {
     startJob(
-      `This is your moderator, Continue to the next slide.`,
+      `This is your moderator, Continue to the next slide, make it QuizWithImageAnswers type.`,
       //reminder: the student is ${age} years old and is interested in ${interest}.${ style ? 'for the graphics use this style: "' + style + '".' : '' }.
     )
   }
