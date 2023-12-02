@@ -288,6 +288,7 @@ async function createSlides(data = {}, sendJobEventToSSE) {
     sendJobEventToSSE({
       status: `createSlides`,
       message: 'slide generation ended',
+      slides: slideObject,
     })
 
     return { status: true }
