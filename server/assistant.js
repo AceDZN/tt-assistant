@@ -2,6 +2,7 @@ require('dotenv').config()
 const express = require('express')
 const OpenAI = require('openai')
 const { v4: uuidv4 } = require('uuid')
+const Replicate = require('replicate')
 
 const {
   extractJSON,
@@ -15,7 +16,7 @@ const axios = require('axios')
 axios.defaults.baseURL = 'http://localhost:3030'
 
 const router = express.Router()
-
+const IMAGE_GENERATION_WITH_DALLE_3 = false
 const TT_ASSISTANT_ID = `asst_LotLGvLUwWyKueeXGg0Zg3og`
 const PROMPT_ASSISTANT_ID = `asst_R9yVGhxeZMgxoVBVBBZpDJRz`
 const TT_SLIDE_CREATOR_ASSISTANT_ID = `asst_24H0hGMLf4gyfrLbzBIArsRJ`
@@ -33,6 +34,10 @@ console.log('Config:', config)
 
 const openai = new OpenAI({
   apiKey: config.OPENAI_API_KEY,
+})
+
+const replicate = new Replicate({
+  auth: process.env.VITE_REPLICATE_API_TOKEN,
 })
 
 const handleToolCall = async (toolCall, sendJobEventToSSE) => {
@@ -143,19 +148,17 @@ router.post('/message', async (req, res) => {
     let assistant = await openai.beta.assistants.retrieve(NEW_TT_MAIN_ASSISTANT_ID)
     let run = await initiateAssistantRun(thread, assistant, prompt, startConversation)
 
-    const _runId = run.id
-    const _threadId = thread.id
-
     sendJobEventToSSE({
       status: 'initiated',
       message: 'Assistant run initiated',
+      threadId: thread.id,
     })
-    const completion = await waitForRunCompletion(_threadId, _runId, undefined, sendJobEventToSSE)
+    const completion = await waitForRunCompletion(thread.id, run.id, undefined, sendJobEventToSSE)
 
     sendJobEventToSSE({
       status: 'completion',
       message: 'Completion Ready',
-      completion: JSON.stringify(completion.additionalData),
+      completion: completion.additionalData,
     })
 
     const messages = await openai.beta.threads.messages.list(thread.id)
@@ -267,7 +270,6 @@ async function createSlides(data = {}, sendJobEventToSSE) {
       thread,
       assistant,
       `${JSON.stringify({ slideConfig, ...additionalData })}`,
-
       undefined,
     )
 
@@ -378,16 +380,31 @@ async function createImages(data = {}, sendJobEventToSSE) {
 
     // Extract the generated prompt from the message
     const generatedPrompt = lastMessage ? lastMessage.content[0].text.value : ''
+    let imageUrl
+    if (IMAGE_GENERATION_WITH_DALLE_3) {
+      // Create the image using the generated prompt
+      const imageResponse = await openai.images.generate({
+        model: 'dall-e-3',
+        prompt: generatedPrompt + ' NO TEXT',
+        //size: '256x256',
+        //quality: 'hd',
+        n: 1,
+      })
+      imageUrl = imageResponse.data[0].url
+    } else {
+      const output = await replicate.run(
+        'dhanushreddy291/sdxl-turbo:53a8078c87ad900402a246bf5e724fa7538cf15c76b0a22753594af58850a0e3',
+        {
+          input: {
+            prompt: generatedPrompt,
+            negative_prompt: 'text, fonts, 3d, cgi, render, bad quality, normal quality',
+          },
+        },
+      )
+      console.log(output)
 
-    // Create the image using the generated prompt
-    const imageResponse = await openai.images.generate({
-      model: 'dall-e-2',
-      prompt: generatedPrompt + ' NO TEXT',
-      size: '256x256',
-      //quality: 'hd',
-      n: 1,
-    })
-    const imageUrl = imageResponse.data[0].url
+      imageUrl = output[0]
+    }
 
     const imageObject = { image_id: image.id, image_url: imageUrl, image_prompt: generatedPrompt }
     const savedImagePath = await saveCreatedImageLocally(imageObject)
@@ -429,7 +446,7 @@ async function visualizeSlides(slides, sendJobEventToSSE) {
   sendJobEventToSSE({
     status: `visualizeSlides`,
     message: `visualizing slides`,
-    slides: JSON.stringify(slides),
+    slides: typeof slides !== 'string' ? JSON.stringify(slides) : slides,
   })
 
   return slides

@@ -104,6 +104,7 @@ function StreamingStatus(props: any) {
       })
       const { data } = res
       const response = data.response
+      if (data.threadId && data.threadId !== threadId) setThreadId(data.threadId)
       if (response && response !== assistantResponse) setAssistantResponse(response)
       setJobId(null)
     },
@@ -196,7 +197,7 @@ function StreamingStatus(props: any) {
       case 'createslides':
       case 'getactivitystructure':
       case 'createimages':
-      case 'visualizeslide':
+      case 'visualizeslides':
         loaderStatus = 'working'
         break
       case 'completion':
@@ -294,7 +295,7 @@ function StreamingStatus(props: any) {
 
   const handleContinue = async () => {
     startJob(
-      `This is your moderator, Continue to the next slide, make it QuizWithImageAnswers type.`,
+      `This is your moderator, Continue to the next slide.`,
       //reminder: the student is ${age} years old and is interested in ${interest}.${ style ? 'for the graphics use this style: "' + style + '".' : '' }.
     )
   }
@@ -306,7 +307,7 @@ function StreamingStatus(props: any) {
   return (
     <>
       <Portal elementId="slide_content">
-        <SlideContent slide={slides[slide]} />
+        <SlideContent slide={slides[slide]} startAIJob={startJob} />
       </Portal>
       <DebugPanel
         status={status}

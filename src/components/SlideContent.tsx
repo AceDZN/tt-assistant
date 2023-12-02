@@ -24,12 +24,15 @@ const DebugText = styled.div`
 `
 
 const Title = styled.h1`
+  font-size: 26px;
   font-family: 'Mulish';
 `
 const Question = styled.h2`
+  font-size: 22px;
   font-family: 'Mulish';
 `
 const Text = styled.p`
+  font-size: 16px;
   font-family: 'Mulish';
 `
 const AnswersContainer = styled.div`
@@ -45,7 +48,7 @@ const AnswerContainer = styled.div`
   gap: 12px;
 `
 const AnswerImage = styled.img`
-  width: 250px;
+  width: 150px;
   max-width: 100%;
   transition: transform 0.25s ease-in-out;
   &:hover {
@@ -53,7 +56,7 @@ const AnswerImage = styled.img`
   }
 `
 const SlideImage = styled.img`
-  width: 320px;
+  width: 200px;
   max-width: 100%;
   transition: transform 0.25s ease-in-out;
   &:hover {
@@ -71,14 +74,20 @@ const AnswerStatus = styled.div`
 
 interface SlideContentProps {
   slide: any
+  startAIJob: any
 }
 // Main React Component
 export const SlideContent = (props: SlideContentProps) => {
-  const { slide } = props
+  const { slide, startAIJob } = props
   const { id, activity_type, structure } = slide || {}
   useEffect(() => {
     console.log('slide', slide)
   }, [props.slide])
+
+  const handleAnswerClick = (answer: any) => {
+    console.log('handleAnswerClick', answer)
+    startAIJob('This is your moderator, the user selected ' + answer.text)
+  }
 
   return activity_type && id ? (
     <div>
@@ -95,7 +104,11 @@ export const SlideContent = (props: SlideContentProps) => {
         <AnswersContainer>
           {structure.answers.length &&
             structure.answers?.map((answer: any) => (
-              <AnswerContainer>
+              <AnswerContainer
+                onClick={() => {
+                  handleAnswerClick(answer)
+                }}
+              >
                 {answer.image_url && <AnswerImage src={answer.image_url} alt={answer.image_prompt} />}
                 {answer.text && <AnswerText>{answer.text}</AnswerText>}
                 <AnswerStatus>{answer.correct ? 'correct' : 'wrong'}</AnswerStatus>
