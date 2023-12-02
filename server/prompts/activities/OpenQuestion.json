@@ -1,0 +1,65 @@
+{
+  "properties": {
+    "image_prompt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "the image_prompt returned from the `create_images` call",
+      "title": "Image Search"
+    },
+    "image_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "the image_url returned from the `create_images` call, only the original image_url response from the `create_images` call is allowed",
+      "title": "Image Url"
+    },
+    "image_id": {
+      "type": "string",
+      "description": "the image_id returned from the `create_images` call",
+      "title": "Image Id"
+    },
+    "activity_type": {
+      "const": "OpenQuestion",
+      "title": "Activity Type"
+    },
+    "question": {
+      "description": "the question to ask",
+      "maxLength": 40,
+      "title": "Question",
+      "type": "string"
+    },
+    "description": {
+      "const": "test knowledge of the player by asking an open ended question that the player should write a paragraph as answer",
+      "title": "Description"
+    },
+    "right_answer_feedback": {
+      "description": "provide feedback that would give more knowledge about the question",
+      "maxLength": 100,
+      "title": "Right Answer Feedback",
+      "type": "string"
+    }
+  },
+  "required": [
+    "image_prompt",
+    "image_url",
+    "image_id",
+    "activity_type",
+    "question",
+    "description",
+    "right_answer_feedback"
+  ],
+  "title": "OpenQuestion",
+  "type": "object"
+}
+

@@ -1,0 +1,21 @@
+{
+  "activity_type": "QuizWithImageAnswers",
+  "description": "A text question; player clicks on one of three image options.",
+  "image_id": "Unique identifier for slide image",
+  "image_type": "Type of image (AnimatedGifHttps, Clipart, Photo)",
+  "image_prompt": "Generated image prompt for slide image",
+  "image_url": "URL of generated slide image",
+  "question": "Question for the user",
+  "answers": [
+    {
+      "text": "Text of the option",
+      "image_prompt": "Prompt for option image",
+      "image_url": "URL of option image",
+      "image_id": "ID of option image",
+      "correct": "Is the option correct?"
+    }
+  ],
+  "right_answer_feedback": "Text for correct answer feedback",
+  "hint": "Text hint for wrong answer"
+}
+

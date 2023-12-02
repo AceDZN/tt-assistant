@@ -1,0 +1,108 @@
+{
+  "$defs": {
+    "Answer": {
+      "properties": {
+        "text": {
+          "description": "answer text",
+          "maxLength": 40,
+          "title": "Text",
+          "type": "string"
+        },
+        "correct": {
+          "title": "Correct",
+          "type": "boolean"
+        }
+      },
+      "required": ["text", "correct"],
+      "title": "Answer",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "image_prompt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "the image_prompt returned from the `create_images` call",
+      "title": "Image Search"
+    },
+    "image_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "the image_url returned from the `create_images` call, only the original image_url response from the `create_images` call is allowed",
+      "title": "Image Url"
+    },
+    "image_id": {
+      "type": "string",
+      "description": "the image_id returned from the `create_images` call",
+      "title": "Image Id"
+    },
+    "activity_type": {
+      "const": "Cloze",
+      "title": "Activity Type"
+    },
+    "instructions": {
+      "description": "Select the missing word",
+      "maxLength": 200,
+      "title": "Instructions",
+      "type": "string"
+    },
+    "sentence": {
+      "description": "a statement about the subject (includes the missing word in it)",
+      "maxLength": 300,
+      "title": "Sentence",
+      "type": "string"
+    },
+    "answers": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Answer"
+      },
+      "maxItems": 3,
+      "minItems": 2,
+      "title": "Answers",
+      "type": "array"
+    },
+    "description": {
+      "const": "The correct answer text is a word in the middle of the sentence; the other incorrect answers are not part of the sentence",
+      "title": "Description"
+    },
+    "hint": {
+      "description": "hint how to answer the question",
+      "maxLength": 100,
+      "title": "Hint",
+      "type": "string"
+    },
+    "right_answer_feedback": {
+      "description": "Cheerful feedback to celebrate the player's correct selection.",
+      "maxLength": 100,
+      "title": "Right Answer Feedback",
+      "type": "string"
+    }
+  },
+  "required": [
+    "image_prompt",
+    "image_url",
+    "image_id",
+    "activity_type",
+    "instructions",
+    "sentence",
+    "description",
+    "hint",
+    "right_answer_feedback"
+  ],
+  "title": "Cloze",
+  "type": "object"
+}
+

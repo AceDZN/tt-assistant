@@ -1,0 +1,28 @@
+{
+  "activity_type": "missing_word",
+  "id": "identifier of the slide by the topic and the slide index (part in lesson)",
+  "image": "the image_url returned from the `create_images` call, only the original image_url response from the `create_images` call is allowed, identified by {slide index}_0",
+  "image_prompt": "the image_prompt returned from the `create_images` call",
+  "transcription": "the text passed to the create_audio function, describing the information of the section, used as intro audio played when starting the slide.",
+  "dub": "audio file url created by create_audio function, identified by {slide index}_0",
+  "sentence": {
+    "full_text": "the full sentence, without any placeholders",
+    "text": "the full sentence, with _  placeholders for each missing letter (keep spaces if there are any)",
+    "prefix": "the word/part of the sentence before the missing part",
+    "missing": "the missing word/part of the sentence",
+    "postfix": "the part of the sentence after the missing part",
+    "hint": "hint to the user about the correct option without saying what it is"
+  },
+  "options": [
+    {
+      "text": "option text",
+      "correct": "isOptionCorrect",
+      "feedback": "response to say when chosen, used by create_audio function",
+      "image": "the image_url returned from the `create_images` call, only the original image_url response from the `create_images` call is allowed, identified by  {slide index}_{option number}",
+      "image_prompt": "keywords or phrase used when creating the image for this option by the `create_images` function. when teaching specific words - those words must be included here as well.",
+      "transcription": "the text passed to the create_audio function, describing the information of the section, used as intro audio played when starting the slide.",
+      "dub": "audio file url created by create_audio function, identified by {slide index}_{option number}"
+    }
+  ]
+}
+

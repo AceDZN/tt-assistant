@@ -1,0 +1,81 @@
+{
+  "$defs": {
+    "Answer": {
+      "properties": {
+        "text": {
+          "description": "answer text",
+          "maxLength": 40,
+          "title": "Text",
+          "type": "string"
+        },
+        "correct": {
+          "title": "Correct",
+          "type": "boolean"
+        }
+      },
+      "required": ["text", "correct"],
+      "title": "Answer",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "image_prompt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "the image_prompt returned from the `create_images` call",
+      "title": "Image Search"
+    },
+    "image_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+
+      "description": "the image_url returned from the `create_images` call, only the original image_url response from the `create_images` call is allowed, only the original image_url response from the `create_images` call is allowed",
+      "title": "Image Url"
+    },
+    "image_id": {
+      "type": "string",
+      "description": "the image_id returned from the `create_images` call",
+      "title": "Image Id"
+    },
+    "activity_type": {
+      "const": "MultiSelect",
+      "title": "Activity Type"
+    },
+    "question": {
+      "description": "a question with 2-4 correct answers",
+      "maxLength": 30,
+      "title": "Question",
+      "type": "string"
+    },
+    "answers": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Answer"
+      },
+      "maxItems": 6,
+      "minItems": 3,
+      "title": "Answers",
+      "type": "array"
+    },
+    "description": {
+      "const": "Use this to ask a textual question where 2-4 textual answers are correct",
+      "title": "Description"
+    }
+  },
+  "required": ["image_prompt", "image_url", "image_id", "activity_type", "question", "description"],
+  "title": "MultiSelect",
+  "type": "object"
+}
+

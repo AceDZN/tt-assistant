@@ -1,0 +1,57 @@
+{
+  "properties": {
+    "image_prompt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "the image_prompt returned from the `create_images` call",
+      "title": "Image Search"
+    },
+    "image_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "the image_url returned from the `create_images` call, only the original image_url response from the `create_images` call is allowed, identified by {slide index}",
+      "title": "Image Url"
+    },
+    "image_id": {
+      "type": "string",
+      "description": "the image_id returned from the `create_images` call",
+      "title": "Image Id"
+    },
+    "activity_type": {
+      "const": "Summary",
+      "title": "Activity Type"
+    },
+    "description": {
+      "const": "descriptive slide featuring an informative paragraph about the subject.",
+      "title": "Description"
+    },
+    "text": {
+      "description": "a comprehensive information block on the subject, ranging from 200 to 450 characters and comprising at least 40 words. Aim for clarity and thoroughness to effectively enlighten the player.",
+      "maxLength": 450,
+      "minLength": 200,
+      "title": "Text",
+      "type": "string"
+    },
+    "tall_image_prompt": {
+      "description": "unique keywords related to the slide's subject matter to formulate an image search term. Minimum 2 words. English only.",
+      "title": "Tall Image Search",
+      "type": "string"
+    }
+  },
+  "required": ["image_prompt", "image_url", "image_id", "activity_type", "description", "text", "tall_image_prompt"],
+  "title": "Summary",
+  "type": "object"
+}
+
