@@ -71,6 +71,7 @@ function StreamingStatus(props: any) {
   const [status, setStatus] = useState<any>(null)
   const [assistantResponse, setAssistantResponse] = useState<any>(null)
   const [step, setStep] = useState(0)
+  const [slides, setSlides] = useState<any>([])
   const [slide, setSlide] = useState<any>(null)
   const [imageUrls, setImageUrls] = useState<any>(null)
   const [message, setMessage] = useState<any>(null)
@@ -81,6 +82,18 @@ function StreamingStatus(props: any) {
   const [style, setStyle] = useState('Pixar')
   const [lessonStarted, setLessonStarted] = useState(false)
   const lastTimeAvatarCalled = useRef<any>(null)
+
+  const addSlide = useCallback(
+    (slide: any) => {
+      setSlides((slides: any) => [...slides, slide])
+    },
+    [slides],
+  )
+
+  useEffect(() => {
+    if ((!slides || slides.length === 0) && slide === slides.length - 1) return
+    setSlide(slides.length - 1)
+  }, [slides])
 
   const sendToOpenAi = useCallback(
     async (jobId: string, message: string) => {
@@ -128,10 +141,12 @@ function StreamingStatus(props: any) {
 
         if (_slide && _slide !== slide) {
           const slideObject = JSON.parse(_slide)
-          const structure =
-            typeof slideObject.structure === 'string' ? JSON.parse(slideObject.structure) : slideObject.structure
-
-          setSlide({ ...slideObject, structure, id: uuidv4() })
+          if (slideObject.slides) {
+            for (const slide of slideObject.slides) {
+              const structure = typeof slide.structure === 'string' ? JSON.parse(slide.structure) : slide.structure
+              addSlide({ ...slide, structure })
+            }
+          }
         }
 
         if (_imageUrls && _imageUrls !== imageUrls) {
@@ -157,7 +172,7 @@ function StreamingStatus(props: any) {
 
       props.onMessage(data)
     },
-    [jobId, step, assistantResponse, status, slide, imageUrls, message],
+    [jobId, step, assistantResponse, status, slide, slides, imageUrls, message],
   )
 
   useEffect(() => {
@@ -255,7 +270,7 @@ function StreamingStatus(props: any) {
 
   const startJob = async (_prompt?: string, onJobStart?: (e: boolean) => void) => {
     if ((window.handleConnect && !window.iceConnectionState) || window.iceConnectionState !== 'connected') {
-      window.handleConnect()
+      //window.handleConnect()
     }
     onJobStart?.(true)
     const jobId = uuidv4()
@@ -290,7 +305,7 @@ function StreamingStatus(props: any) {
   return (
     <>
       <Portal elementId="slide_content">
-        <SlideContent slide={slide} />
+        <SlideContent slide={slides[slide]} />
       </Portal>
       <DebugPanel
         status={status}

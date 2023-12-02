@@ -35,15 +35,31 @@ const sendJobEvent = async (jobId, data) => {
   const dataObject = { jobId, data }
   await axios.post(jobsEndpoint, dataObject)
 }
-
+async function getLearningMethod(method) {
+  try {
+    const filePath = path.join(__dirname, `/prompts/learning_methods/${method}.md`)
+    const data = await fsp.readFile(filePath, 'utf8')
+    return data
+    //return typeof data === 'string' ? JSON.parse(data) : data
+  } catch (error) {
+    console.error(`Error reading the file: ${error.message}`)
+    throw new Error(`Error reading the file: ${error.message}`)
+  }
+}
 async function getActivityJSONStructure(activity_type) {
   try {
     const filePath = path.join(__dirname, `/prompts/activities/${activity_type}.json`)
     const data = await fsp.readFile(filePath, 'utf8')
     return typeof data === 'string' ? JSON.parse(data) : data
   } catch (error) {
-    console.error(`Error reading the file: ${error.message}`)
-    throw new Error(`Error reading the file: ${error.message}`)
+    try {
+      const filePath = path.join(__dirname, `/prompts/activities/SummaryWithTitle.json`)
+      const data = await fsp.readFile(filePath, 'utf8')
+      return typeof data === 'string' ? JSON.parse(data) : data
+    } catch (error) {
+      console.error(`Error reading the file: ${error.message}`)
+      throw new Error(`Error reading the file: ${error.message}`)
+    }
   }
 }
 async function downloadAndSaveImage(url, filename) {
@@ -69,5 +85,5 @@ async function saveCreatedImageLocally(image) {
   // Return the local image path instead of the URL
   return 'http://localhost:3030/uploaded/images/' + filename
 }
-module.exports = { extractJSON, sendJobEvent, getActivityJSONStructure, saveCreatedImageLocally }
+module.exports = { extractJSON, sendJobEvent, getActivityJSONStructure, getLearningMethod, saveCreatedImageLocally }
 

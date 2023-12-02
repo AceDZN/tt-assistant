@@ -3,7 +3,13 @@ const express = require('express')
 const OpenAI = require('openai')
 const { v4: uuidv4 } = require('uuid')
 
-const { extractJSON, sendJobEvent, getActivityJSONStructure, saveCreatedImageLocally } = require('./utils')
+const {
+  extractJSON,
+  sendJobEvent,
+  getActivityJSONStructure,
+  saveCreatedImageLocally,
+  getLearningMethod,
+} = require('./utils')
 const axios = require('axios')
 
 axios.defaults.baseURL = 'http://localhost:3030'
@@ -13,6 +19,8 @@ const router = express.Router()
 const TT_ASSISTANT_ID = `asst_LotLGvLUwWyKueeXGg0Zg3og`
 const PROMPT_ASSISTANT_ID = `asst_R9yVGhxeZMgxoVBVBBZpDJRz`
 const TT_SLIDE_CREATOR_ASSISTANT_ID = `asst_24H0hGMLf4gyfrLbzBIArsRJ`
+
+const NEW_TT_MAIN_ASSISTANT_ID = `asst_IyB81iGnTpnDC41Srqimiemj`
 
 const clients = {}
 const jobs = {}
@@ -37,12 +45,14 @@ const handleToolCall = async (toolCall, sendJobEventToSSE, runId, threadId) => {
   switch (func.name) {
     case 'create_slides':
       return createSlides(func.arguments, sendJobEventToSSE, runId, threadId)
+    case 'get_lesson_plan':
+      return getLessonPlan(func.arguments, sendJobEventToSSE, runId, threadId)
     case 'get_activity_structure':
       return getActivityStructure(func.arguments, sendJobEventToSSE, runId, threadId)
     case 'create_images':
       return createImages(func.arguments, sendJobEventToSSE)
-    case 'visualize_slide':
-      return visualizeSlide(func.arguments, sendJobEventToSSE, runId, threadId)
+    case 'visualize_slides':
+      return visualizeSlides(func.arguments, sendJobEventToSSE, runId, threadId)
     case 'parallel':
       return handleParallelTools(toolCall, sendJobEventToSSE, runId, threadId)
     default:
@@ -132,7 +142,7 @@ router.post('/message', async (req, res) => {
     sendJobEventToSSE({ status: 'Starting' })
     const additionalData = {}
     let thread = threadId ? await openai.beta.threads.retrieve(threadId) : await openai.beta.threads.create()
-    let assistant = await openai.beta.assistants.retrieve(TT_ASSISTANT_ID)
+    let assistant = await openai.beta.assistants.retrieve(NEW_TT_MAIN_ASSISTANT_ID)
     let run = await initiateAssistantRun(thread, assistant, prompt, startConversation)
 
     const _runId = run.id
@@ -270,16 +280,9 @@ async function initiateAssistantRun(thread, assistant, prompt, startConversation
 async function createSlides(data = {}, sendJobEventToSSE, _threadId) {
   // Function to handle the creation of a single slide
   async function handleSingleSlide(slideConfig, add_data) {
-    // Create a new thread for each image
-    let thread
-    if (_threadId) {
-      thread = await openai.beta.threads.retrieve(_threadId)
-    } else {
-      thread = await openai.beta.threads.create()
-    }
     let assistant = await openai.beta.assistants.retrieve(TT_SLIDE_CREATOR_ASSISTANT_ID)
+    let thread = await openai.beta.threads.create()
 
-    // Generate prompt for the image
     let run = await initiateAssistantRun(
       thread,
       assistant,
@@ -303,7 +306,7 @@ async function createSlides(data = {}, sendJobEventToSSE, _threadId) {
     // Extract the generated prompt from the message
     const generatedSlide = lastMessage ? lastMessage.content[0].text.value : ''
 
-    const slideObject = { slide: generatedSlide }
+    const slideObject = { slides: generatedSlide }
 
     sendJobEventToSSE({
       status: `createSlides`,
@@ -311,10 +314,10 @@ async function createSlides(data = {}, sendJobEventToSSE, _threadId) {
       runId: run.id,
       threadId: thread.id,
       assistantId: PROMPT_ASSISTANT_ID,
-      slide: slideObject,
+      response: { success: true, message: 'slide created and visualized' },
     })
 
-    return slideObject
+    return { status: true }
   }
 
   const fixedData = typeof data === 'string' ? JSON.parse(data) : data
@@ -327,7 +330,31 @@ async function createSlides(data = {}, sendJobEventToSSE, _threadId) {
   // Return the array of slide objects
   return { success: true, slides: slideResults, ...additionalData }
 }
+async function getLessonPlan(data = {}, sendJobEventToSSE, runId, threadId) {
+  const fixedData = typeof data === 'string' ? JSON.parse(data) : data
+  const { activity, student_age, student_interests, style, subject, history, tutor_request } = fixedData
+  const additionalData = { student_age, student_interests, style, subject, history, tutor_request }
+  console.log('getLessonPlan additionalData', { additionalData })
 
+  const response = await getLearningMethod('default')
+    .then((content) => {
+      return { success: true, learning_plan: content }
+    })
+    .catch((error) => {
+      console.error(error)
+      return { success: false }
+    })
+  console.log(response)
+  sendJobEventToSSE({
+    status: `getLessonPlan`,
+    message: 'returned lesson plan',
+    runId: runId,
+    threadId: threadId,
+    assistantId: TT_ASSISTANT_ID,
+  })
+
+  return { success: true, lesson_plan: response }
+}
 async function getActivityStructure(_activity, sendJobEventToSSE, runId, threadId) {
   sendJobEventToSSE({
     status: `getActivityStructure`,
@@ -340,6 +367,9 @@ async function getActivityStructure(_activity, sendJobEventToSSE, runId, threadI
   console.log(activity.activity_type, typeof _activity)
   const response = await getActivityJSONStructure(activity.activity_type)
     .then((content) => {
+      if (!content.id) {
+        content.id = uuidv4()
+      }
       return { success: true, activity_structure: content }
     })
     .catch((error) => {
@@ -389,9 +419,9 @@ async function createImages(data = {}, sendJobEventToSSE) {
 
     // Create the image using the generated prompt
     const imageResponse = await openai.images.generate({
-      model: 'dall-e-3',
+      model: 'dall-e-2',
       prompt: generatedPrompt,
-      quality: 'hd',
+      //quality: 'hd',
       n: 1,
     })
     const imageUrl = imageResponse.data[0].url
@@ -425,16 +455,16 @@ async function createImages(data = {}, sendJobEventToSSE) {
   return { success: true, images: imageResults }
 }
 
-async function visualizeSlide(slide, sendJobEventToSSE, runId, threadId) {
-  console.log(JSON.stringify(slide))
+async function visualizeSlides(slides, sendJobEventToSSE, runId, threadId) {
+  console.log(JSON.stringify(slides))
 
   sendJobEventToSSE({
-    status: `visualizeSlide`,
-    message: `visualizing slide`,
+    status: `visualizeSlides`,
+    message: `visualizing slides`,
     runId: runId,
     threadId: threadId,
     assinstantId: TT_ASSISTANT_ID,
-    slide: slide,
+    slides: slides,
   })
   return slide
 }
