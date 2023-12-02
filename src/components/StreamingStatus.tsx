@@ -277,7 +277,7 @@ function StreamingStatus(props: any) {
     onJobStart?.(true)
     const jobId = uuidv4()
     setJobId(jobId)
-    let prompt = `This is your moderator, the student is ${age} years old and is interested in ${interest}. The student wants to learn about ${subject} ${
+    let prompt = `This is your moderator, the student is ${age} years old and is interested in ${interest}. The student wants to learn about ${subject}. ${
       style ? 'for the graphics use this style: "' + style + '".' : ''
     }. let's start the lesson.`
 

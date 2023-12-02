@@ -17,6 +17,8 @@ axios.defaults.baseURL = 'http://localhost:3030'
 
 const router = express.Router()
 const IMAGE_GENERATION_WITH_DALLE_3 = false
+const SHOULD_GENERATE_PROMPTS = false
+const SHOULD_GENERATE_IMAGES = false
 const TT_ASSISTANT_ID = `asst_LotLGvLUwWyKueeXGg0Zg3og`
 const PROMPT_ASSISTANT_ID = `asst_R9yVGhxeZMgxoVBVBBZpDJRz`
 const TT_SLIDE_CREATOR_ASSISTANT_ID = `asst_24H0hGMLf4gyfrLbzBIArsRJ`
@@ -358,58 +360,64 @@ async function createImages(data = {}, sendJobEventToSSE) {
 
   async function handleSingleImage(image, props) {
     // Create a new thread for each image
-    let thread = await openai.beta.threads.create()
-    let assistant = await openai.beta.assistants.retrieve(PROMPT_ASSISTANT_ID)
-
-    // Generate prompt for the image
-    let run = await initiateAssistantRun(
-      thread,
-      assistant,
-      `here is my input: ${JSON.stringify({ ...props, image: image })}`,
-
-      undefined,
-    )
+    let generatedPrompt = image.keywords
     sendJobEventToSSE({
       status: `createImages`,
       message: 'image generation started',
     })
-    // Wait for prompt generation to complete
-    const completion = await waitForRunCompletion(thread.id, run.id, undefined, sendJobEventToSSE)
-    const messages = await openai.beta.threads.messages.list(thread.id)
-    const lastMessage = messages.data.find((message) => message.run_id === run.id && message.role === 'assistant')
+    if (SHOULD_GENERATE_PROMPTS) {
+      let thread = await openai.beta.threads.create()
+      let assistant = await openai.beta.assistants.retrieve(PROMPT_ASSISTANT_ID)
 
-    // Extract the generated prompt from the message
-    const generatedPrompt = lastMessage ? lastMessage.content[0].text.value : ''
-    let imageUrl
-    if (IMAGE_GENERATION_WITH_DALLE_3) {
-      // Create the image using the generated prompt
-      const imageResponse = await openai.images.generate({
-        model: 'dall-e-3',
-        prompt: generatedPrompt + ' NO TEXT',
-        //size: '256x256',
-        //quality: 'hd',
-        n: 1,
-      })
-      imageUrl = imageResponse.data[0].url
-    } else {
-      const output = await replicate.run(
-        'dhanushreddy291/sdxl-turbo:53a8078c87ad900402a246bf5e724fa7538cf15c76b0a22753594af58850a0e3',
-        {
-          input: {
-            prompt: generatedPrompt,
-            negative_prompt: 'text, fonts, 3d, cgi, render, bad quality, normal quality',
-          },
-        },
+      // Generate prompt for the image
+      let run = await initiateAssistantRun(
+        thread,
+        assistant,
+        `here is my input: ${JSON.stringify({ ...props, image: image })}`,
+        undefined,
       )
-      console.log(output)
 
-      imageUrl = output[0]
+      // Wait for prompt generation to complete
+      const completion = await waitForRunCompletion(thread.id, run.id, undefined, sendJobEventToSSE)
+      const messages = await openai.beta.threads.messages.list(thread.id)
+      const lastMessage = messages.data.find((message) => message.run_id === run.id && message.role === 'assistant')
+
+      // Extract the generated prompt from the message
+      generatedPrompt = lastMessage ? lastMessage.content[0].text.value : ''
     }
 
+    let imageUrl
     const imageObject = { image_id: image.id, image_url: imageUrl, image_prompt: generatedPrompt }
-    const savedImagePath = await saveCreatedImageLocally(imageObject)
-    if (savedImagePath) {
-      imageObject.image_url = savedImagePath
+    if (SHOULD_GENERATE_IMAGES) {
+      if (IMAGE_GENERATION_WITH_DALLE_3) {
+        // Create the image using the generated prompt
+        const imageResponse = await openai.images.generate({
+          model: 'dall-e-3',
+          prompt: generatedPrompt + ' NO TEXT',
+          //size: '256x256',
+          //quality: 'hd',
+          n: 1,
+        })
+        imageObject.image_url = imageResponse.data[0].url
+      } else {
+        const output = await replicate.run(
+          'dhanushreddy291/sdxl-turbo:53a8078c87ad900402a246bf5e724fa7538cf15c76b0a22753594af58850a0e3',
+          {
+            input: {
+              prompt: generatedPrompt,
+              negative_prompt: 'text, fonts, 3d, cgi, render, bad quality, normal quality',
+            },
+          },
+        )
+        console.log(output)
+        imageObject.image_url = output[0]
+      }
+      const savedImagePath = await saveCreatedImageLocally(imageObject)
+      if (savedImagePath) {
+        imageObject.image_url = savedImagePath
+      }
+    } else {
+      imageObject.image_url = 'https://picsum.photos/seed/picsum/300/300'
     }
     // Return the image object
     // Send event to SSE

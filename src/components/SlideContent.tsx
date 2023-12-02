@@ -86,7 +86,7 @@ export const SlideContent = (props: SlideContentProps) => {
 
   const handleAnswerClick = (answer: any) => {
     console.log('handleAnswerClick', answer)
-    startAIJob('This is your moderator, the user selected ' + answer.text)
+    startAIJob('This is your moderator, the user selected ' + (answer.text || answer.answer))
   }
 
   return activity_type && id ? (
@@ -111,6 +111,7 @@ export const SlideContent = (props: SlideContentProps) => {
               >
                 {answer.image_url && <AnswerImage src={answer.image_url} alt={answer.image_prompt} />}
                 {answer.text && <AnswerText>{answer.text}</AnswerText>}
+                {answer.answer && <AnswerText>{answer.answer}</AnswerText>}
                 <AnswerStatus>{answer.correct ? 'correct' : 'wrong'}</AnswerStatus>
               </AnswerContainer>
             ))}
