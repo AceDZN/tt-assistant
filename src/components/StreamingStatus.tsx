@@ -121,10 +121,9 @@ function StreamingStatus(props: any) {
           step: _step = 0,
           status: _status = 'idle',
           slide: _slide,
+          slides: _slides,
           message: _message,
           response,
-          runId,
-          assistantId,
           threadId: _threadId,
           imageUrls: _imageUrls,
         } = data
@@ -139,10 +138,10 @@ function StreamingStatus(props: any) {
           setStatus(_status)
         }
 
-        if (_slide && _slide !== slide) {
-          const slideObject = JSON.parse(_slide)
-          if (slideObject.slides) {
-            for (const slide of slideObject.slides) {
+        if (_slides) {
+          const slidesObject = JSON.parse(_slides)
+          if (slidesObject.slides) {
+            for (const slide of slidesObject.slides) {
               const structure = typeof slide.structure === 'string' ? JSON.parse(slide.structure) : slide.structure
               addSlide({ ...slide, structure })
             }

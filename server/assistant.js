@@ -288,7 +288,7 @@ async function createSlides(data = {}, sendJobEventToSSE) {
     sendJobEventToSSE({
       status: `createSlides`,
       message: 'slide generation ended',
-      slides: slideObject,
+      //slides: JSON.stringify(slideObject),
     })
 
     return { status: true }
@@ -383,6 +383,7 @@ async function createImages(data = {}, sendJobEventToSSE) {
     const imageResponse = await openai.images.generate({
       model: 'dall-e-2',
       prompt: generatedPrompt + ' NO TEXT',
+      size: '256x256',
       //quality: 'hd',
       n: 1,
     })
@@ -425,12 +426,10 @@ async function createImages(data = {}, sendJobEventToSSE) {
 }
 
 async function visualizeSlides(slides, sendJobEventToSSE) {
-  console.log(JSON.stringify(slides))
-
   sendJobEventToSSE({
     status: `visualizeSlides`,
     message: `visualizing slides`,
-    slides: slides,
+    slides: JSON.stringify(slides),
   })
 
   return slides
