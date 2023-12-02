@@ -8,7 +8,7 @@
   "question": "Question for the user",
   "answers": [
     {
-      "answer": "Text of the option",
+      "text": "Text of the option",
       "image_prompt": "Prompt for option image",
       "image_url": "URL of option image",
       "image_id": "ID of option image",
