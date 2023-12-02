@@ -35,7 +35,7 @@ const openai = new OpenAI({
   apiKey: config.OPENAI_API_KEY,
 })
 
-const handleToolCall = async (toolCall, sendJobEventToSSE, runId, threadId) => {
+const handleToolCall = async (toolCall, sendJobEventToSSE) => {
   const { type, function: func } = toolCall
   console.log('toolCall', toolCall)
   if (type !== 'function') {
@@ -44,17 +44,17 @@ const handleToolCall = async (toolCall, sendJobEventToSSE, runId, threadId) => {
 
   switch (func.name) {
     case 'create_slides':
-      return createSlides(func.arguments, sendJobEventToSSE, runId, threadId)
+      return createSlides(func.arguments, sendJobEventToSSE)
     case 'get_lesson_plan':
-      return getLessonPlan(func.arguments, sendJobEventToSSE, runId, threadId)
+      return getLessonPlan(func.arguments, sendJobEventToSSE)
     case 'get_activity_structure':
-      return getActivityStructure(func.arguments, sendJobEventToSSE, runId, threadId)
+      return getActivityStructure(func.arguments, sendJobEventToSSE)
     case 'create_images':
       return createImages(func.arguments, sendJobEventToSSE)
     case 'visualize_slides':
-      return visualizeSlides(func.arguments, sendJobEventToSSE, runId, threadId)
+      return visualizeSlides(func.arguments, sendJobEventToSSE)
     case 'parallel':
-      return handleParallelTools(toolCall, sendJobEventToSSE, runId, threadId)
+      return handleParallelTools(toolCall, sendJobEventToSSE)
     default:
       throw new Error(`Unhandled tool call: ${JSON.stringify(toolCall)}`)
   }
@@ -74,9 +74,7 @@ async function waitForRunCompletion(threadId, runId, maxRetries = 200, sendJobEv
       const { tool_calls } = requiredAction.submit_tool_outputs
       //console.log('Tool Calls:', tool_calls)
 
-      const results = await Promise.all(
-        tool_calls.map((toolCall) => handleToolCall(toolCall, sendJobEventToSSE, runId, threadId)),
-      )
+      const results = await Promise.all(tool_calls.map((toolCall) => handleToolCall(toolCall, sendJobEventToSSE)))
 
       const tools_output = results.map((result, index) => ({
         tool_call_id: tool_calls[index].id,
@@ -135,7 +133,7 @@ router.post('/message', async (req, res) => {
 
   const sendJobEventToSSE = async (data = { message: `Step ${step} complete` }) => {
     step = step + 1
-    sendJobEvent(jobId, { ...data, step })
+    await sendJobEvent(jobId, { ...data, step })
   }
 
   try {
@@ -147,14 +145,10 @@ router.post('/message', async (req, res) => {
 
     const _runId = run.id
     const _threadId = thread.id
-    const _assinstantId = assistant.id
 
     sendJobEventToSSE({
       status: 'initiated',
       message: 'Assistant run initiated',
-      runId: _runId,
-      threadId: _threadId,
-      assinstantId: _assinstantId,
     })
     const completion = await waitForRunCompletion(_threadId, _runId, undefined, sendJobEventToSSE)
 
@@ -162,9 +156,6 @@ router.post('/message', async (req, res) => {
       status: 'completion',
       message: 'Completion Ready',
       completion: JSON.stringify(completion.additionalData),
-      runId: _runId,
-      threadId: _threadId,
-      assinstantId: _assinstantId,
     })
 
     const messages = await openai.beta.threads.messages.list(thread.id)
@@ -180,32 +171,21 @@ router.post('/message', async (req, res) => {
         sendJobEventToSSE({
           status: 'tts',
           message: 'TTS Started',
-          response: speechFile,
-          runId: _runId,
-          threadId: _threadId,
-          assinstantId: _assinstantId,
         })
         const speechFile = await createTTS(lastMessageForRun.content[0].text.value)
         additionalData.speechFile = speechFile
         sendJobEventToSSE({
           status: 'tts',
           message: 'TTS Ready',
-          response: speechFile,
-          runId: _runId,
-          threadId: _threadId,
-          assinstantId: _assinstantId,
         })
       }
-      sendJobEventToSSE({
+      await sendJobEventToSSE({
         status: 'finish',
         message: 'Generation Ready',
         response: lastMessageForRun.content[0].text.value,
-        completion: JSON.stringify(completion.additionalData),
-        runId: _runId,
-        threadId: _threadId,
-        assinstantId: _assinstantId,
+        //completion: JSON.stringify(completion.additionalData)
       })
-      res
+      await res
         .status(200)
         .json({ response: lastMessageForRun.content[0].text.value, threadId: thread.id, ...additionalData })
 
@@ -277,7 +257,7 @@ async function initiateAssistantRun(thread, assistant, prompt, startConversation
     instructions: instructions.join(' '),
   })
 }
-async function createSlides(data = {}, sendJobEventToSSE, _threadId) {
+async function createSlides(data = {}, sendJobEventToSSE) {
   // Function to handle the creation of a single slide
   async function handleSingleSlide(slideConfig, add_data) {
     let assistant = await openai.beta.assistants.retrieve(TT_SLIDE_CREATOR_ASSISTANT_ID)
@@ -294,9 +274,6 @@ async function createSlides(data = {}, sendJobEventToSSE, _threadId) {
     sendJobEventToSSE({
       status: `createSlides`,
       message: 'slide generation started',
-      runId: run.id,
-      threadId: thread.id,
-      assistantId: PROMPT_ASSISTANT_ID,
     })
     // Wait for prompt generation to complete
     const completion = await waitForRunCompletion(thread.id, run.id, undefined, sendJobEventToSSE)
@@ -311,10 +288,6 @@ async function createSlides(data = {}, sendJobEventToSSE, _threadId) {
     sendJobEventToSSE({
       status: `createSlides`,
       message: 'slide generation ended',
-      runId: run.id,
-      threadId: thread.id,
-      assistantId: PROMPT_ASSISTANT_ID,
-      response: { success: true, message: 'slide created and visualized' },
     })
 
     return { status: true }
@@ -330,7 +303,7 @@ async function createSlides(data = {}, sendJobEventToSSE, _threadId) {
   // Return the array of slide objects
   return { success: true, slides: slideResults, ...additionalData }
 }
-async function getLessonPlan(data = {}, sendJobEventToSSE, runId, threadId) {
+async function getLessonPlan(data = {}, sendJobEventToSSE) {
   const fixedData = typeof data === 'string' ? JSON.parse(data) : data
   const { activity, student_age, student_interests, style, subject, history, tutor_request } = fixedData
   const additionalData = { student_age, student_interests, style, subject, history, tutor_request }
@@ -348,20 +321,14 @@ async function getLessonPlan(data = {}, sendJobEventToSSE, runId, threadId) {
   sendJobEventToSSE({
     status: `getLessonPlan`,
     message: 'returned lesson plan',
-    runId: runId,
-    threadId: threadId,
-    assistantId: TT_ASSISTANT_ID,
   })
 
   return { success: true, lesson_plan: response }
 }
-async function getActivityStructure(_activity, sendJobEventToSSE, runId, threadId) {
+async function getActivityStructure(_activity, sendJobEventToSSE) {
   sendJobEventToSSE({
     status: `getActivityStructure`,
     message: 'checking activity structure',
-    runId: runId,
-    threadId: threadId,
-    assistantId: TT_ASSISTANT_ID,
   })
   const activity = typeof _activity === 'string' ? JSON.parse(_activity) : _activity
   console.log(activity.activity_type, typeof _activity)
@@ -380,9 +347,6 @@ async function getActivityStructure(_activity, sendJobEventToSSE, runId, threadI
   sendJobEventToSSE({
     status: `getActivityStructure`,
     message: 'returned activity structure',
-    runId: runId,
-    threadId: threadId,
-    assistantId: TT_ASSISTANT_ID,
   })
   return response
 }
@@ -405,9 +369,6 @@ async function createImages(data = {}, sendJobEventToSSE) {
     sendJobEventToSSE({
       status: `createImages`,
       message: 'image generation started',
-      runId: run.id,
-      threadId: thread.id,
-      assistantId: PROMPT_ASSISTANT_ID,
     })
     // Wait for prompt generation to complete
     const completion = await waitForRunCompletion(thread.id, run.id, undefined, sendJobEventToSSE)
@@ -420,7 +381,7 @@ async function createImages(data = {}, sendJobEventToSSE) {
     // Create the image using the generated prompt
     const imageResponse = await openai.images.generate({
       model: 'dall-e-2',
-      prompt: generatedPrompt,
+      prompt: generatedPrompt + ' NO TEXT',
       //quality: 'hd',
       n: 1,
     })
@@ -433,6 +394,7 @@ async function createImages(data = {}, sendJobEventToSSE) {
     }
     // Return the image object
     // Send event to SSE
+    /*
     sendJobEventToSSE({
       status: `createImages`,
       message: 'image generation ended',
@@ -440,7 +402,7 @@ async function createImages(data = {}, sendJobEventToSSE) {
       threadId: thread.id,
       assistantId: PROMPT_ASSISTANT_ID,
       image: imageObject,
-    })
+    })*/
 
     return imageObject
   }
@@ -451,25 +413,29 @@ async function createImages(data = {}, sendJobEventToSSE) {
   const imagePromises = images.map((image) => handleSingleImage(image, additionalData))
   const imageResults = await Promise.all(imagePromises)
 
+  sendJobEventToSSE({
+    status: `createImages`,
+    message: 'image generation ended',
+    images: imageResults,
+  })
+
   // Return the array of image objects
   return { success: true, images: imageResults }
 }
 
-async function visualizeSlides(slides, sendJobEventToSSE, runId, threadId) {
+async function visualizeSlides(slides, sendJobEventToSSE) {
   console.log(JSON.stringify(slides))
 
   sendJobEventToSSE({
     status: `visualizeSlides`,
     message: `visualizing slides`,
-    runId: runId,
-    threadId: threadId,
-    assinstantId: TT_ASSISTANT_ID,
     slides: slides,
   })
-  return slide
+
+  return slides
 }
 
-async function handleParallelTools(_toolCall, sendJobEventToSSE, runId, threadId) {
+async function handleParallelTools(_toolCall, sendJobEventToSSE) {
   // Parse the function argument to extract the tool uses
   const { function: func, id: toolCallId } = _toolCall
   const parsedArguments = JSON.parse(func.arguments)
@@ -488,7 +454,7 @@ async function handleParallelTools(_toolCall, sendJobEventToSSE, runId, threadId
     const toolCall = { type: 'function', function: n_function, id: toolCallId }
     console.log('Parallel Tool Call', toolCall)
     // Use returnToolCall to initiate the correct async function
-    return handleToolCall(toolCall, sendJobEventToSSE, runId, threadId)
+    return handleToolCall(toolCall, sendJobEventToSSE)
   })
 
   // Wait for all promises to resolve and return the results

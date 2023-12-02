@@ -165,7 +165,7 @@ function StreamingStatus(props: any) {
 
         if (_threadId && _threadId !== threadId) setThreadId(_threadId)
 
-        console.log('handlePostMessage', { runId, assistantId, threadId })
+        console.log('handlePostMessage', { ...data })
       }
 
       console.log({ data })
@@ -191,8 +191,10 @@ function StreamingStatus(props: any) {
     switch (status.toLowerCase()) {
       case 'starting':
       case 'initiated':
+      case 'getlessonplan':
         loaderStatus = 'loading'
         break
+      case 'createslides':
       case 'getactivitystructure':
       case 'createimages':
       case 'visualizeslide':
