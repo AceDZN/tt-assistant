@@ -35,8 +35,6 @@ const sendJobEvent = async (jobId, data) => {
   const dataObject = { jobId, data }
   await axios.post(jobsEndpoint, dataObject)
 }
-
-const jobs[{}]
 async function getLearningMethod(method) {
   try {
     const filePath = path.join(__dirname, `/prompts/learning_methods/${method}.md`)
@@ -55,7 +53,7 @@ async function getActivityJSONStructure(activity_type) {
     return typeof data === 'string' ? JSON.parse(data) : data
   } catch (error) {
     try {
-      const filePath = path.join(__dirname, `/prompts/activities/SummaryWithTitle.json`)
+      const filePath = path.join(__dirname, `/prompts/activities/${activity_type}.json`)
       const data = await fsp.readFile(filePath, 'utf8')
       return typeof data === 'string' ? JSON.parse(data) : data
     } catch (error) {

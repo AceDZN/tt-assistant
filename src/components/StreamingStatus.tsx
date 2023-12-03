@@ -61,6 +61,18 @@ const CodeBlock = styled.code`
     margin-top: 0;
   }
 `
+
+const SlidesNavigation = styled.ul`
+  background-color: #312841;
+  list-style: none;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+`
+const SlidesNavigationItem = styled.li`
+  color: #fff;
+  font-weight: bold;
+`
 //const slideContainer = document.getElementById('slide_content')
 const imageContainer = document.getElementById('image_container')
 
@@ -131,11 +143,10 @@ function StreamingStatus(props: any) {
         if (_step && _step !== step) setStep(_step)
 
         if (_status && _status !== status) {
-          /***
           if (_status !== 'idle') {
             handleMessageTalk(`I just changed my status to ${_status}`)
-          } 
-          */
+          }
+
           setStatus(_status)
         }
 
@@ -351,6 +362,15 @@ function StreamingStatus(props: any) {
 
         {message ? <Message>{message}</Message> : null}
       </SideBarContainer>
+      {slides && slides.length ? (
+        <Portal elementId="slides_navigation">
+          <SlidesNavigation>
+            {slides.map((slide: any, idx: number) => (
+              <SlidesNavigationItem onClick={() => setSlide(idx)}>{idx + 1}</SlidesNavigationItem>
+            ))}
+          </SlidesNavigation>
+        </Portal>
+      ) : null}
     </>
   )
 }
