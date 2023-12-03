@@ -35,6 +35,8 @@ const sendJobEvent = async (jobId, data) => {
   const dataObject = { jobId, data }
   await axios.post(jobsEndpoint, dataObject)
 }
+
+const jobs[{}]
 async function getLearningMethod(method) {
   try {
     const filePath = path.join(__dirname, `/prompts/learning_methods/${method}.md`)
