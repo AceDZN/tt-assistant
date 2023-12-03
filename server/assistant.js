@@ -16,14 +16,14 @@ const axios = require('axios')
 axios.defaults.baseURL = 'http://localhost:3030'
 
 const router = express.Router()
-const IMAGE_GENERATION_WITH_DALLE_3 = false
-const SHOULD_GENERATE_PROMPTS = false
-const SHOULD_GENERATE_IMAGES = false
+const IMAGE_GENERATION_WITH_DALLE_3 = true
+const SHOULD_GENERATE_PROMPTS = true
+const SHOULD_GENERATE_IMAGES = true
 const TT_ASSISTANT_ID = `asst_LotLGvLUwWyKueeXGg0Zg3og`
-const PROMPT_ASSISTANT_ID = `asst_R9yVGhxeZMgxoVBVBBZpDJRz`
-const TT_SLIDE_CREATOR_ASSISTANT_ID = `asst_24H0hGMLf4gyfrLbzBIArsRJ`
+const PROMPT_ASSISTANT_ID = `asst_AggoXrI7AiRjM4vwvCF0pPDF` //``asst_R9yVGhxeZMgxoVBVBBZpDJRz`
+const TT_SLIDE_CREATOR_ASSISTANT_ID = `asst_395QmAPVTuZMnwvxxmD4EaEd` //`asst_24H0hGMLf4gyfrLbzBIArsRJ`
 
-const NEW_TT_MAIN_ASSISTANT_ID = `asst_IyB81iGnTpnDC41Srqimiemj`
+const NEW_TT_MAIN_ASSISTANT_ID = `asst_RWxoRwUrX1LaF0djoiebz5qn` //`asst_IyB81iGnTpnDC41Srqimiemj`
 
 const clients = {}
 const jobs = {}

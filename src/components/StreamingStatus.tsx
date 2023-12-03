@@ -144,7 +144,7 @@ function StreamingStatus(props: any) {
 
         if (_status && _status !== status) {
           if (_status !== 'idle') {
-            handleMessageTalk(`I just changed my status to ${_status}`)
+            //handleMessageTalk(`I just changed my status to ${_status}`)
           }
 
           setStatus(_status)
