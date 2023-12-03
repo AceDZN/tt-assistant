@@ -72,6 +72,19 @@ const SlidesNavigation = styled.ul`
 const SlidesNavigationItem = styled.li`
   color: #fff;
   font-weight: bold;
+  padding-top: 100%;
+  height: 0;
+  position: relative;
+  &.pointer {
+    cursor: pointer;
+  }
+  & span {
+    display: block;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
 `
 //const slideContainer = document.getElementById('slide_content')
 const imageContainer = document.getElementById('image_container')
@@ -365,8 +378,10 @@ function StreamingStatus(props: any) {
       {slides && slides.length ? (
         <Portal elementId="slides_navigation">
           <SlidesNavigation>
-            {slides.map((slide: any, idx: number) => (
-              <SlidesNavigationItem onClick={() => setSlide(idx)}>{idx + 1}</SlidesNavigationItem>
+            {slides.map((_slide: any, idx: number) => (
+              <SlidesNavigationItem className={idx === slide ? 'disabled' : 'pointer'} onClick={() => setSlide(idx)}>
+                <span>{idx + 1}</span>
+              </SlidesNavigationItem>
             ))}
           </SlidesNavigation>
         </Portal>
