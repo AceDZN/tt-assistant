@@ -9,12 +9,13 @@ Open 2 terminals:
   Server:
 ```
 
-`yarn install`
+`yarn install`\n
 `yarn server`
 
 ```
   Frontend:
 ```
 
-`yarn install`
+`yarn install`\n
 `yarn dev`
+
