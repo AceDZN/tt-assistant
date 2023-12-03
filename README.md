@@ -5,17 +5,17 @@
 but if you still want to test it:
 Open 2 terminals:
 
-```
-  Server:
-```
-
-`yarn install`\n
-`yarn server`
+**Server:**
 
 ```
-  Frontend:
+yarn install
+yarn server
 ```
 
-`yarn install`\n
-`yarn dev`
+**Frontend:**
+
+```
+yarn install
+yarn dev
+```
 
