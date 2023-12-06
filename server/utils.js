@@ -85,5 +85,27 @@ async function saveCreatedImageLocally(image) {
   // Return the local image path instead of the URL
   return 'http://localhost:3030/uploaded/images/' + filename
 }
-module.exports = { extractJSON, sendJobEvent, getActivityJSONStructure, getLearningMethod, saveCreatedImageLocally }
+async function getRendererStructure(base_tructure) {
+  console.log('base_tructure', base_tructure)
+  const response = await axios
+    .post('https://langchain-development.tinytap.it/activity/render/', JSON.stringify([base_tructure]), {
+      headers: {
+        TINY_TOKEN: 'yW5uxOecwilFcX635w9ZdqhQbHzDlT5Qx7lWJ9pn',
+      },
+    })
+    .then((res) => {
+      console.log(res, 'RES')
+      return res.json ? res.json() : res
+    })
+
+  return response
+}
+module.exports = {
+  extractJSON,
+  sendJobEvent,
+  getActivityJSONStructure,
+  getLearningMethod,
+  saveCreatedImageLocally,
+  getRendererStructure,
+}
 
