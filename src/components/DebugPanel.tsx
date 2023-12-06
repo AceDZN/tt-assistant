@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import styled from 'styled-components'
 
 // Define the styled components
@@ -157,6 +157,20 @@ const Step = styled.div`
     font-weight: bold;
   }
 `
+const RunTimeListContainer = styled.div``
+const RunTimeList = styled.ul`
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-in-out;
+  &.shown {
+    max-height: 100px;
+    overflow: auto;
+  }
+  &.hidden {
+    max-height: 0;
+  }
+`
+const RunTimeListItem = styled.li``
 const Message = styled.code`
   font-size: 12px;
   line-height: 13px;
@@ -174,6 +188,7 @@ const INTERESTS = ['dinosaurs', 'pirates', 'space', 'animals', 'cars', 'trucks',
 const STYLES = ['Pixar', 'Steampunk', 'Studio Ghibli', 'Rubber Hose', 'Pixel Art']
 // Define the component
 interface DebugPanelProps {
+  runtimeList: any[]
   step?: string
   status?: string
   message?: string
@@ -190,6 +205,7 @@ interface DebugPanelProps {
 const DebugPanel: React.FC<DebugPanelProps> = (props) => {
   const [isOpen, setIsOpen] = useState(true)
   const {
+    runtimeList = [],
     step = '-1',
     status = 'Null',
     message = undefined,
@@ -206,6 +222,7 @@ const DebugPanel: React.FC<DebugPanelProps> = (props) => {
   const [age, setAge] = useState(_age)
   const [interest, setInterest] = useState(_interest)
   const [subject, setSubject] = useState(_subject)
+  const [shownRunTimeList, setShownRunTimeList] = useState(false)
 
   const handleStyleSelect = (e: any) => {
     const newStyle = e.target.value
@@ -231,7 +248,9 @@ const DebugPanel: React.FC<DebugPanelProps> = (props) => {
     setSubject(e.target.value)
     onSubjectChange?.(e.target.value)
   }
-
+  const handleRunTimeListDisplay = useCallback(() => {
+    setShownRunTimeList(!shownRunTimeList)
+  }, [shownRunTimeList])
   const toggleOpen = () => setIsOpen(!isOpen)
 
   return (
@@ -247,6 +266,18 @@ const DebugPanel: React.FC<DebugPanelProps> = (props) => {
           </Step>
         </StatusMessage>
         <Message>{message}</Message>
+        {runtimeList && runtimeList.length ? (
+          <RunTimeListContainer>
+            <button onClick={handleRunTimeListDisplay}>{shownRunTimeList ? 'hide' : 'show'} runtimes</button>
+            <RunTimeList className={`${shownRunTimeList ? 'shown' : 'hidden'}`}>
+              {runtimeList.map((run) => (
+                <RunTimeListItem>
+                  {run.action} - {run.run_time}
+                </RunTimeListItem>
+              ))}
+            </RunTimeList>
+          </RunTimeListContainer>
+        ) : null}
       </MessageContainer>
       <SelectBoxesContainer>
         <SelectBoxWrapper>
