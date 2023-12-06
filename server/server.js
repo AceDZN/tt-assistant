@@ -24,6 +24,10 @@ app.get('/ping', (req, res) => {
   res.send('pong')
 })
 
+app.get('/html', function (request, response) {
+  response.sendFile(path.join(__dirname, 'html') + '/index.html')
+})
+
 let pings = 0
 
 app.get('/ping-counter', (req, res) => {
