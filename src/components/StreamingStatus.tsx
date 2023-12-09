@@ -68,6 +68,7 @@ const SlidesNavigation = styled.ul`
   text-align: center;
   margin: 0;
   padding: 0;
+  border-radius: 20px;
 `
 const SlidesNavigationItem = styled.li`
   color: #fff;
@@ -105,9 +106,16 @@ function StreamingStatus(props: any) {
   const [interest, setInterest] = useState('pirates')
   const [subject, setSubject] = useState('new words')
   const [style, setStyle] = useState('Pixar')
+  const [runtimeList, setRuntimeList] = useState<any>([])
   const [lessonStarted, setLessonStarted] = useState(false)
   const lastTimeAvatarCalled = useRef<any>(null)
-
+  const addRunTime = useCallback(
+    (run: any) => {
+      const currentRuns = [...runtimeList]
+      setRuntimeList([...currentRuns, { ...run }])
+    },
+    [runtimeList],
+  )
   const addSlide = useCallback(
     (slide: any) => {
       setSlides((slides: any) => [...slides, slide])
@@ -152,6 +160,7 @@ function StreamingStatus(props: any) {
           response,
           threadId: _threadId,
           imageUrls: _imageUrls,
+          run_time,
         } = data
         if (_step && _step !== step) setStep(_step)
 
@@ -161,6 +170,12 @@ function StreamingStatus(props: any) {
           }
 
           setStatus(_status)
+          if (run_time) {
+            addRunTime({
+              run_time: run_time,
+              action: _status,
+            })
+          }
         }
 
         if (_slides) {
@@ -218,6 +233,7 @@ function StreamingStatus(props: any) {
       case 'getlessonplan':
         loaderStatus = 'loading'
         break
+      case 'createslide':
       case 'createslides':
       case 'getactivitystructure':
       case 'createimages':
@@ -334,6 +350,7 @@ function StreamingStatus(props: any) {
         <SlideContent slide={slides[slide]} startAIJob={startJob} />
       </Portal>
       <DebugPanel
+        runtimeList={runtimeList}
         status={status}
         step={`${step}`}
         message={message}
