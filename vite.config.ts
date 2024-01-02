@@ -4,6 +4,9 @@ import mix from 'vite-plugin-mix'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  server: {
+    port: 5177,
+  },
   plugins: [
     /*
     mix({
